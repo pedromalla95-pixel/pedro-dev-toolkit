@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["verdict", "summary", "plan_quality", "findings", "assumption_audit", "unknowns_manifest", "tests_contract"],
+  "properties": {
+    "verdict": {
+      "type": ["string", "null"],
+      "description": "Challenger never issues a PROCEED/REVISE/RETHINK verdict. Always null."
+    },
+    "summary": { "type": "string", "minLength": 1 },
+    "plan_quality": { "type": "string", "enum": ["RICH", "ADEQUATE", "THIN", "TRIVIAL"] },
+    "findings": {
+      "type": "array",
+      "description": "Challenge brief. One item per challenge (incl. assumption-audit escalations). Each item.title is the stable challenge-topic slug source.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "origin", "claim", "concern", "failure_scenario", "alternative", "severity", "confidence", "status", "resolution", "iteration_introduced"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "origin": { "type": "string", "enum": ["challenger"] },
+          "claim": { "type": "string" },
+          "concern": { "type": "string" },
+          "failure_scenario": { "type": "string" },
+          "alternative": { "type": "string" },
+          "severity": { "type": "string", "enum": ["BLOCKING", "SIGNIFICANT", "MINOR"] },
+          "confidence": { "type": "string", "enum": ["HIGH", "MED", "LOW"] },
+          "status": { "type": "string", "enum": ["OPEN", "RESOLVED", "UNRESOLVED", "DEFERRED", "WITHDRAWN"] },
+          "resolution": { "type": "string" },
+          "iteration_introduced": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "assumption_audit": {
+      "type": "array",
+      "description": "Phase 2b. Top 3-5 highest-impact assumptions validated against evidence.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "assumption", "source", "status", "evidence", "escalated_to"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "assumption": { "type": "string" },
+          "source": { "type": "string" },
+          "status": { "type": "string", "enum": ["VALIDATED", "CHALLENGED", "STALE", "UNVERIFIED"] },
+          "evidence": { "type": "string" },
+          "escalated_to": { "type": ["string", "null"], "description": "C{N} challenge id or U{N} unknown id, or null" }
+        }
+      }
+    },
+    "unknowns_manifest": {
+      "type": "array",
+      "description": "Phase 2.5. Things the plan needs known but the challenger could not verify. Researcher Mode 1 resolves these.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "description", "type", "affects_challenge", "suggested_query"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "description": { "type": "string" },
+          "type": { "type": "string", "enum": ["FILE_MISSING", "API_BEHAVIOR", "PRIOR_DECISION", "STALE_KNOWLEDGE", "INTEGRATION_UNKNOWN"] },
+          "affects_challenge": { "type": ["string", "null"] },
+          "suggested_query": { "type": "string" }
+        }
+      }
+    },
+    "tests_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "TC-1 audit (protocol.md §14). Whether a code-change plan carries a valid ## Tests section.",
+      "required": ["id", "plan_is_code_change", "section_present", "exemption_marker", "spec_count", "valid_specs", "severity", "generates_challenge", "notes"],
+      "properties": {
+        "id": { "type": "string", "enum": ["TC-1"] },
+        "plan_is_code_change": { "type": "boolean" },
+        "section_present": { "type": "boolean" },
+        "exemption_marker": { "type": ["string", "null"], "enum": ["docs-only", "config-only", "research-only", "planning-only", null] },
+        "spec_count": { "type": "integer", "minimum": 0 },
+        "valid_specs": { "type": "integer", "minimum": 0 },
+        "severity": { "type": "string", "enum": ["BLOCKING", "SIGNIFICANT", "MINOR", "EXEMPT", "PASS"] },
+        "generates_challenge": { "type": ["string", "null"] },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "description": "Convergence controller. The orchestrator branches on convergence.status (loop control) and reads directives for the next iteration; verdict is the user-facing PROCEED/REVISE/RETHINK and is null on CONTINUE iterations.",
+  "required": ["verdict", "convergence", "summary", "resolution_table", "findings", "directives", "rumsfeld_coverage", "swot_summary", "quality_score", "quality_dimensions"],
+  "properties": {
+    "verdict": {
+      "type": ["string", "null"],
+      "enum": ["PROCEED", "REVISE", "RETHINK", null],
+      "description": "null on CONTINUE/BLOCKED iterations; set only when the loop is concluding."
+    },
+    "convergence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "blocking_open", "significant_open", "degradation"],
+      "properties": {
+        "status": { "type": "string", "enum": ["CONTINUE", "CONVERGED", "BLOCKED", "FORCED_EXIT"], "description": "LOOP CONTROL. The orchestrator's Step 3d branches on this, NOT on verdict." },
+        "blocking_open": { "type": "integer", "minimum": 0 },
+        "significant_open": { "type": "integer", "minimum": 0 },
+        "degradation": { "type": "boolean", "description": "true when this iteration created more challenges than it resolved." }
+      }
+    },
+    "summary": { "type": "string", "minLength": 1 },
+    "resolution_table": {
+      "type": "array",
+      "description": "Every active challenge with its current status and resolving evidence.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "origin", "severity", "status", "evidence"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "origin": { "type": "string" },
+          "severity": { "type": "string", "enum": ["BLOCKING", "SIGNIFICANT", "MINOR"] },
+          "status": { "type": "string", "enum": ["OPEN", "RESOLVED", "UNRESOLVED", "DEFERRED", "WITHDRAWN"] },
+          "evidence": { "type": "string" }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "description": "ONLY the challenges still OPEN or UNRESOLVED (the remaining issues). item.title drives the helper's challenge_topics + issue_count that plan-perfector's oscillation/regression guard consumes. Empty when fully converged to PROCEED.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "origin", "severity", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "origin": { "type": "string" },
+          "severity": { "type": "string", "enum": ["BLOCKING", "SIGNIFICANT", "MINOR"] },
+          "status": { "type": "string", "enum": ["OPEN", "UNRESOLVED"] }
+        }
+      }
+    },
+    "directives": {
+      "type": "array",
+      "description": "Instructions for the next iteration. May include RE-SWEEP / RE-PROBE / RE-GRANULARITY / RE-SWOT / RE-ADVERSARIAL / RE-DOMAIN tokens plus specific guidance. RE-ADVERSARIAL and RE-DOMAIN control whether devils-advocate and domain-expert are spawned at all on the next iteration. Empty when concluding.",
+      "items": { "type": "string" }
+    },
+    "rumsfeld_coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Q1_unknown_knowns", "Q2_known_unknowns", "Q3_known_knowns", "Q4_unknown_unknowns"],
+      "properties": {
+        "Q1_unknown_knowns": {
+          "type": "object", "additionalProperties": false, "required": ["status", "evidence"],
+          "properties": { "status": { "type": "string", "enum": ["COVERED", "PARTIAL", "UNCOVERED"] }, "evidence": { "type": "string" } }
+        },
+        "Q2_known_unknowns": {
+          "type": "object", "additionalProperties": false, "required": ["status", "evidence"],
+          "properties": { "status": { "type": "string", "enum": ["COVERED", "PARTIAL", "UNCOVERED"] }, "evidence": { "type": "string" } }
+        },
+        "Q3_known_knowns": {
+          "type": "object", "additionalProperties": false, "required": ["status", "evidence"],
+          "properties": { "status": { "type": "string", "enum": ["COVERED", "PARTIAL", "UNCOVERED"] }, "evidence": { "type": "string" } }
+        },
+        "Q4_unknown_unknowns": {
+          "type": "object", "additionalProperties": false, "required": ["status", "evidence"],
+          "properties": { "status": { "type": "string", "enum": ["COVERED", "PARTIAL", "UNCOVERED"] }, "evidence": { "type": "string" } }
+        }
+      }
+    },
+    "swot_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strengths", "opportunities", "unresolved_weaknesses", "unresolved_threats"],
+      "properties": {
+        "strengths": { "type": "array", "items": { "type": "string" } },
+        "opportunities": { "type": "array", "items": { "type": "string" } },
+        "unresolved_weaknesses": { "type": "array", "items": { "type": "string" } },
+        "unresolved_threats": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "quality_score": { "type": ["integer", "null"], "minimum": 1, "maximum": 10, "description": "Final iteration only; null otherwise. INFORMATIONAL — never affects convergence." },
+    "quality_dimensions": {
+      "type": "array",
+      "description": "Per-dimension breakdown on the final iteration; empty otherwise.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["dimension", "weight", "score", "evidence"],
+        "properties": {
+          "dimension": { "type": "string" },
+          "weight": { "type": "number" },
+          "score": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "evidence": { "type": "string" }
+        }
+      }
+    }
+  }
+}

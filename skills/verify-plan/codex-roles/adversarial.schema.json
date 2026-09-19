@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "description": "LITE-mode merged adversarial role: challenger + devils-advocate + swot (weaknesses/threats) lenses in one call. Attacks the plan for fatal flaws, hidden assumptions, black-swan cascades, and strategic weaknesses/threats. Never issues a verdict (structural-verdict owns that).",
+  "required": ["verdict", "summary", "attack_surface_map", "assumption_audit", "swot_wt", "findings"],
+  "properties": {
+    "verdict": { "type": ["string", "null"], "description": "Adversarial role never issues a verdict. Always null." },
+    "summary": { "type": "string", "minLength": 1 },
+    "attack_surface_map": { "type": "string", "description": "2-3 sentences: highest-risk dependencies, human touchpoints, failure-propagation paths." },
+    "assumption_audit": {
+      "type": "array",
+      "description": "Top 3-5 highest-impact assumptions the plan treats as fact, validated against evidence.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "assumption", "source", "status", "evidence", "escalated_to"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "assumption": { "type": "string" },
+          "source": { "type": "string" },
+          "status": { "type": "string", "enum": ["VALIDATED", "CHALLENGED", "STALE", "UNVERIFIED"] },
+          "evidence": { "type": "string" },
+          "escalated_to": { "type": ["string", "null"], "description": "C{N} challenge id if CHALLENGED, else null" }
+        }
+      }
+    },
+    "swot_wt": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Strategic Weakness/Threat buckets (max 3 each). Material BLOCKING/SIGNIFICANT W/T not already in findings are escalated into findings.",
+      "required": ["weaknesses", "threats"],
+      "properties": {
+        "weaknesses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "title", "claim", "evidence", "severity", "escalated_to"],
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string", "minLength": 1 },
+              "claim": { "type": "string" },
+              "evidence": { "type": "string" },
+              "severity": { "type": "string", "enum": ["BLOCKING", "SIGNIFICANT", "MINOR"] },
+              "escalated_to": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "threats": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "title", "claim", "category", "trigger", "severity", "escalated_to"],
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string", "minLength": 1 },
+              "claim": { "type": "string" },
+              "category": { "type": "string", "enum": ["vendor", "scale", "regulatory", "environment", "human-error", "coordination", "temporal"] },
+              "trigger": { "type": "string" },
+              "severity": { "type": "string", "enum": ["BLOCKING", "SIGNIFICANT", "MINOR"] },
+              "escalated_to": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "description": "Consolidated adversarial challenges (origin=adversarial): challenger-style flaws, black-swan cascades, and escalated W/T. item.title is the stable challenge-topic slug source.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "origin", "claim", "concern", "failure_scenario", "alternative", "severity", "confidence", "status", "resolution", "iteration_introduced"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "origin": { "type": "string", "enum": ["adversarial"] },
+          "claim": { "type": "string" },
+          "concern": { "type": "string" },
+          "failure_scenario": { "type": "string" },
+          "alternative": { "type": "string" },
+          "severity": { "type": "string", "enum": ["BLOCKING", "SIGNIFICANT", "MINOR"] },
+          "confidence": { "type": "string", "enum": ["HIGH", "MED", "LOW"] },
+          "status": { "type": "string", "enum": ["OPEN", "RESOLVED", "UNRESOLVED", "DEFERRED", "WITHDRAWN"] },
+          "resolution": { "type": "string" },
+          "iteration_introduced": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,150 @@
+---
+name: context-builder
+description: "Force thorough context-building before planning or execution. Replaces shallow 2-3 question behavior with structured, one-at-a-time questioning that references existing artifacts, challenges vague answers, and provides coverage status. Use this skill when entering plan mode, starting GSD discuss phases, building context before execution, or when deeper questioning is needed. Triggers: context builder, deep questioning, build context, thorough questioning, ask better questions, /context-builder, interview, gather context, discuss phase, plan mode, before planning, understand requirements, fill gaps, blindspot sweep. Does NOT apply to: bug fixes, code review, debugging, operational tasks, or requests with explicit scope already provided."
+---
+
+# Context Builder
+
+You are now in structured context-building mode. Your goal is to build complete, gap-free understanding before any planning or execution begins. Shallow questioning leads to wrong assumptions, which become bugs in execution.
+
+## Before You Ask Anything
+
+Read all existing artifacts FIRST. Do not ask a single question until you have reviewed what already exists:
+
+- PROJECT.md, ROADMAP.md, REQUIREMENTS.md
+- Prior CONTEXT.md files
+- **Memory files** (MEMORY.md index + relevant topic files in the memory directory)
+- Codebase patterns and conventions (scan relevant directories)
+- Git history for recent decisions
+- Any research/ docs or planning/ artifacts
+- **CLAUDE.md and rules/** (global and project-level instructions, user preferences)
+
+This step is non-negotiable. Questions that could be answered by reading existing artifacts waste the user's time and signal that you haven't done your homework.
+
+## The 10 Rules
+
+### Rule 1: Artifacts First
+Read all existing project artifacts before asking any questions. Reference what you found: "I read PROJECT.md and see the app uses Supabase — is that still the plan for this phase?"
+
+### Rule 2: One Question at a Time
+Ask exactly ONE question per message. Never batch multiple questions. This forces deeper answers and prevents the user from giving shallow responses to skip past hard questions. Wait for the answer before asking the next question.
+
+### Rule 3: Per-Question Self-Audit
+Before asking each question, run a quick internal check — is the answer already available in: (1) memory files you read earlier, (2) the codebase or git history, (3) something the user already said in this conversation? If yes, skip that question and incorporate the known answer into your next question's context. If partially answered, ask only about the gap. This gate applies to every single question, not just the first one — context accumulates during the interview and later questions may become redundant as earlier answers fill in gaps.
+
+Ground every question in something concrete you already know. Instead of "What's the tech stack?", ask "I see you're using Next.js with Supabase in the existing codebase — does this phase follow the same stack, or are there changes?" This demonstrates competence and gets more precise answers.
+
+### Rule 4: Challenge Vague Answers
+When a user gives a short or vague answer, push back with escalating persistence:
+- **Level 1 (gentle):** "Could you elaborate on what you mean by 'it works like normal'?"
+- **Level 2 (specific):** "You said 'standard flow' — I want to make sure I understand. Does that mean [specific interpretation A] or [specific interpretation B]?"
+- **Level 3 (direct):** "I need a concrete answer here because this decision affects [downstream consequence]. What specifically happens when [edge case]?"
+
+Do not accept "it's fine", "the usual way", "nothing special", or similar non-answers for anything that could affect implementation.
+
+### Rule 5: Cover All Gap Categories
+Systematically address ALL of these categories — not just the obvious ones:
+- **Domain blindspots:** Things you don't know you don't know about the business/domain
+- **Technical constraints:** Performance, compatibility, platform limitations
+- **Cross-phase dependencies:** How this phase's decisions constrain future phases
+- **User workflow implications:** How real users will interact with what you're building
+- **Edge cases:** What happens when inputs are unexpected, missing, or malformed
+- **Assumption validation:** Things you're taking for granted that might be wrong
+
+### Rule 6: Coverage Status Every 3-5 Questions
+After every 3-5 questions, pause and provide a structured coverage report:
+
+```
+**Coverage Status:**
+- Covered: [list topics with HIGH confidence]
+- Still fuzzy: [list topics with LOW or MEDIUM confidence and why]
+- Unexplored: [list categories not yet addressed]
+```
+
+This keeps the user informed about progress and helps them decide where to focus. It also forces you to honestly assess what you still don't know.
+
+### Rule 7: Explicit Handoff — No Auto-Transition
+NEVER transition to planning or execution on your own. When you believe context is sufficient, explicitly state:
+
+"I'm satisfied with the context gathered. Here's my understanding: [brief summary]. Ready to proceed when you give the go-ahead."
+
+Wait for the user to confirm before changing modes. This prevents the common failure of rushing to planning after surface-level questioning.
+
+### Rule 8: Firm and Collaborative Tone
+Be a thoughtful collaborator, not a passive questionnaire. Your tone should be:
+- **Firm:** Don't back down from important questions
+- **Collaborative:** Frame questions as "helping us build a solid foundation"
+- **Escalating:** Get more assertive when answers stay vague after two attempts
+- **Never combative:** Challenge ideas, not the person
+
+### Rule 9: Escape Hatch
+If the user signals they want to skip the full protocol:
+- Phrases like "skip", "I know what I want", "just proceed", "enough questions", "let's go"
+
+Respond with:
+1. A brief coverage summary of what you DO know
+2. Flagged risks for what you DON'T know
+3. An offer: "I can proceed with these assumptions, or we can address [specific gap] first. Your call."
+
+Respect the user's agency — they may have context you don't see. But make sure they know the risks.
+
+### Rule 10: Depth Calibration
+Assess phase complexity at the start and calibrate your questioning depth:
+
+| Complexity | Signals | Depth |
+|-----------|---------|-------|
+| **Trivial** | Single concern, no dependencies, low risk | 2-3 targeted questions |
+| **Moderate** | Multiple concerns, some dependencies, medium risk | 5-8 questions across categories |
+| **Complex** | Many concerns, cross-phase dependencies, high risk, unfamiliar domain | Exhaustive — no upper limit |
+
+State your assessment: "This looks like a moderate-complexity phase because [reasons]. I'll aim for 5-8 questions across the key categories."
+
+## Question Strategy Layers
+
+Work through these layers in order. Each layer builds on the previous one.
+
+### Layer 1: Strategic
+- Why does this phase exist? What problem does it solve?
+- What does success look like? How will we know it's done?
+- Who does this affect? (users, other systems, other team members)
+- What's the priority relative to other work?
+
+### Layer 2: Context
+- What already exists that this builds on?
+- What constraints carry over from previous phases or decisions?
+- What decisions are already locked (tech stack, architecture, third-party services)?
+- What patterns or conventions does the existing codebase follow?
+
+### Layer 3: Technical
+- What are the specific implementation requirements?
+- What are the dependencies (libraries, APIs, services)?
+- What are the risks? What could go wrong?
+- What edge cases need handling?
+- What are the performance/scale requirements?
+
+### Layer 4: Validation
+- Challenge stated assumptions: "You said X — is that still accurate?"
+- Surface contradictions: "Earlier you mentioned A, but this implies B — which is it?"
+- Blindspot sweep: After addressing the above layers, ask yourself: "What gaps remain? What am I assuming? What context would make this plan stronger?"
+- If gaps remain, ask more questions. Do not proceed with unresolved contradictions.
+
+## Anti-Patterns to Avoid
+
+These are the exact behaviors this skill exists to prevent:
+
+- **Batch questioning:** Asking 3-5 questions at once, getting shallow answers to all
+- **Accepting vague answers:** "It works like normal" → move on (WRONG — push back)
+- **Skipping artifact review:** Asking questions whose answers are in PROJECT.md, memory files, or earlier conversation messages
+- **Auto-transitioning:** "Great, I have enough context, let me create a plan..." (WRONG — state readiness and wait)
+- **Surface-level coverage:** Asking about tech stack and timeline but ignoring domain blindspots, edge cases, or cross-phase dependencies
+- **Premature depth calibration:** Classifying as "trivial" to avoid thorough questioning
+
+## Starting the Protocol
+
+When this skill activates, your first message should follow this pattern:
+
+1. State that you're entering context-building mode
+2. List the artifacts you're about to review
+3. Review them (using Read/Glob/Grep tools)
+4. State your initial complexity assessment
+5. Ask your first question — grounded in what you found

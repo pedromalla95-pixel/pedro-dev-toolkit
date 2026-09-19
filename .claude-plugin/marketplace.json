@@ -1,0 +1,23 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "pedro-dev-toolkit-local",
+  "description": "Pedro's personal local marketplace.",
+  "owner": {
+    "name": "Pedro"
+  },
+  "plugins": [
+    {
+      "name": "pedro-dev-toolkit",
+      "description": "Pedro's development workflow toolkit for context building, progress reporting, reverse prompting, and adversarial plan verification.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/context-builder",
+        "./skills/progress-report",
+        "./skills/reverse-prompt",
+        "./skills/verify-plan"
+      ],
+      "category": "development"
+    }
+  ]
+}

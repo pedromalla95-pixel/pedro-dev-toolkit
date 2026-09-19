@@ -1,0 +1,16 @@
+{
+  "name": "pedro-dev-toolkit",
+  "version": "1.0.0",
+  "description": "Pedro's development workflow toolkit for context building, progress reporting, reverse prompting, and adversarial plan verification.",
+  "author": {
+    "name": "Pedro"
+  },
+  "license": "MIT",
+  "keywords": [
+    "context-building",
+    "planning",
+    "progress-reporting",
+    "reverse-prompting",
+    "plan-verification"
+  ]
+}

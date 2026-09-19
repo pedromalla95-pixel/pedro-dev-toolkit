@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "description": "LITE-mode merged structural+verdict role: granularity-checker + synthesizer in one call. Assesses task right-sizing/granularity AND emits the final consolidated PROCEED/REVISE/RETHINK verdict. In LITE mode (single pass) convergence is terminal — this role concludes the run. Its findings[] (OPEN/UNRESOLVED challenges) drive the helper's issue_count + challenge_topics that plan-perfector consumes.",
+  "required": ["verdict", "convergence", "summary", "dimensions_checked", "granularity_findings", "resolution_table", "findings", "rumsfeld_coverage", "swot_summary", "quality_score", "quality_dimensions"],
+  "properties": {
+    "verdict": {
+      "type": ["string", "null"],
+      "enum": ["PROCEED", "REVISE", "RETHINK", null],
+      "description": "Final user-facing verdict. In LITE single-pass this is ALWAYS set (never null) since the pass is terminal."
+    },
+    "convergence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "blocking_open", "significant_open", "raw_blocking_open", "raw_significant_open"],
+      "properties": {
+        "status": { "type": "string", "enum": ["CONVERGED", "BLOCKED", "FORCED_EXIT"], "description": "LITE mode is single-pass terminal: CONVERGED (PROCEED/REVISE), BLOCKED (BLOCKING needs user input), or FORCED_EXIT (RETHINK). Never CONTINUE." },
+        "blocking_open": { "type": "integer", "minimum": 0, "description": "DEDUPLICATED OPEN+UNRESOLVED BLOCKING count — findings whose duplicate_of is null only. The verdict is computed from this." },
+        "significant_open": { "type": "integer", "minimum": 0, "description": "DEDUPLICATED OPEN+UNRESOLVED SIGNIFICANT count — findings whose duplicate_of is null only. The verdict is computed from this." },
+        "raw_blocking_open": { "type": "integer", "minimum": 0, "description": "Undeduplicated BLOCKING total. INFORMATIONAL ONLY — never drives the verdict. Always emit: codex --output-schema requires every property to be listed in required." },
+        "raw_significant_open": { "type": "integer", "minimum": 0, "description": "Undeduplicated SIGNIFICANT total. INFORMATIONAL ONLY — never drives the verdict. Always emit: codex --output-schema requires every property to be listed in required." }
+      }
+    },
+    "summary": { "type": "string", "minLength": 1 },
+    "dimensions_checked": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["atomicity", "intermediate_gaps", "ambiguity", "success_criteria", "dependency_explicitness", "handoff_clarity"] }
+    },
+    "granularity_findings": {
+      "type": "array",
+      "description": "Granularity / mechanical-executability findings (all, escalated and report-only). Each quotes exact plan text and gives a concrete example_fix.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "dimension", "plan_location", "issue", "quoted_text", "example_fix", "severity", "generates_challenge"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "dimension": { "type": "string", "enum": ["atomicity", "intermediate_gaps", "ambiguity", "success_criteria", "dependency_explicitness", "handoff_clarity"] },
+          "plan_location": { "type": "string" },
+          "issue": { "type": "string" },
+          "quoted_text": { "type": "string" },
+          "example_fix": { "type": "string" },
+          "severity": { "type": "string", "enum": ["BLOCKING", "SIGNIFICANT", "MINOR"] },
+          "generates_challenge": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "resolution_table": {
+      "type": "array",
+      "description": "Every active challenge from all LITE roles (adversarial + empirical-domain + granularity escalations) with its final status and resolving evidence.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "origin", "severity", "status", "evidence"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "origin": { "type": "string" },
+          "severity": { "type": "string", "enum": ["BLOCKING", "SIGNIFICANT", "MINOR"] },
+          "status": { "type": "string", "enum": ["OPEN", "RESOLVED", "UNRESOLVED", "DEFERRED", "WITHDRAWN"] },
+          "evidence": { "type": "string" }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "description": "ONLY the challenges still OPEN or UNRESOLVED (the remaining issues). item.title drives the helper's challenge_topics + issue_count that plan-perfector's oscillation/regression guard consumes. Reuse stable concise titles. Empty when verdict is PROCEED.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "origin", "severity", "status", "duplicate_of"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "origin": { "type": "string" },
+          "severity": { "type": "string", "enum": ["BLOCKING", "SIGNIFICANT", "MINOR"] },
+          "status": { "type": "string", "enum": ["OPEN", "UNRESOLVED"] },
+          "duplicate_of": {
+            "type": ["string", "null"],
+            "description": "The C{N} id of the finding this one duplicates, or null if it is the canonical instance. Set by the role, never inferred downstream."
+          }
+        }
+      }
+    },
+    "rumsfeld_coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Q1_unknown_knowns", "Q2_known_unknowns", "Q3_known_knowns", "Q4_unknown_unknowns"],
+      "properties": {
+        "Q1_unknown_knowns": {
+          "type": "object", "additionalProperties": false, "required": ["status", "evidence"],
+          "properties": { "status": { "type": "string", "enum": ["COVERED", "PARTIAL", "UNCOVERED"] }, "evidence": { "type": "string" } }
+        },
+        "Q2_known_unknowns": {
+          "type": "object", "additionalProperties": false, "required": ["status", "evidence"],
+          "properties": { "status": { "type": "string", "enum": ["COVERED", "PARTIAL", "UNCOVERED"] }, "evidence": { "type": "string" } }
+        },
+        "Q3_known_knowns": {
+          "type": "object", "additionalProperties": false, "required": ["status", "evidence"],
+          "properties": { "status": { "type": "string", "enum": ["COVERED", "PARTIAL", "UNCOVERED"] }, "evidence": { "type": "string" } }
+        },
+        "Q4_unknown_unknowns": {
+          "type": "object", "additionalProperties": false, "required": ["status", "evidence"],
+          "properties": { "status": { "type": "string", "enum": ["COVERED", "PARTIAL", "UNCOVERED"] }, "evidence": { "type": "string" } }
+        }
+      }
+    },
+    "swot_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strengths", "opportunities", "unresolved_weaknesses", "unresolved_threats"],
+      "properties": {
+        "strengths": { "type": "array", "items": { "type": "string" } },
+        "opportunities": { "type": "array", "items": { "type": "string" } },
+        "unresolved_weaknesses": { "type": "array", "items": { "type": "string" } },
+        "unresolved_threats": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "quality_score": { "type": ["integer", "null"], "minimum": 1, "maximum": 10, "description": "LITE single-pass is terminal, so set this (INFORMATIONAL — never affects the verdict)." },
+    "quality_dimensions": {
+      "type": "array",
+      "description": "Per-dimension breakdown. Populated on the terminal LITE pass.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["dimension", "weight", "score", "evidence"],
+        "properties": {
+          "dimension": { "type": "string" },
+          "weight": { "type": "number" },
+          "score": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "evidence": { "type": "string" }
+        }
+      }
+    }
+  }
+}

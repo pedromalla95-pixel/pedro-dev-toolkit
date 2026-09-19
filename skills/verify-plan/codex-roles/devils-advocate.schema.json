@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["verdict", "summary", "attack_surface_map", "overlap_guard", "findings"],
+  "properties": {
+    "verdict": { "type": ["string", "null"], "description": "Devils-advocate never issues a verdict. Always null." },
+    "summary": { "type": "string", "minLength": 1 },
+    "attack_surface_map": { "type": "string", "description": "2-3 sentences: highest-risk dependencies, human touchpoints, failure-propagation paths." },
+    "overlap_guard": {
+      "type": "array",
+      "description": "Existing challenge IDs reviewed to confirm no duplication.",
+      "items": { "type": "string" }
+    },
+    "findings": {
+      "type": "array",
+      "description": "BLOCKING/SIGNIFICANT black-swan challenges only. origin=devils-advocate. item.title = challenge-topic slug source.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "origin", "claim", "concern", "failure_scenario", "alternative", "severity", "confidence", "status", "resolution", "iteration_introduced"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "origin": { "type": "string", "enum": ["devils-advocate"] },
+          "claim": { "type": "string" },
+          "concern": { "type": "string" },
+          "failure_scenario": { "type": "string", "description": "Full cascade: trigger -> effect -> consequence -> observable symptom." },
+          "alternative": { "type": "string" },
+          "severity": { "type": "string", "enum": ["BLOCKING", "SIGNIFICANT"] },
+          "confidence": { "type": "string", "enum": ["HIGH", "MED"] },
+          "status": { "type": "string", "enum": ["OPEN", "RESOLVED", "UNRESOLVED", "DEFERRED", "WITHDRAWN"] },
+          "resolution": { "type": "string" },
+          "iteration_introduced": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  }
+}

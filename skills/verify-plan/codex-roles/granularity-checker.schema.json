@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["verdict", "summary", "skipped", "skip_reason", "dimensions_checked", "findings", "escalated_challenges"],
+  "properties": {
+    "verdict": { "type": ["string", "null"], "description": "Granularity-checker never issues a verdict. Always null." },
+    "summary": { "type": "string", "minLength": 1 },
+    "skipped": { "type": "boolean", "description": "true on iter 2-3 when no plan changes and no RE-GRANULARITY directive." },
+    "skip_reason": { "type": ["string", "null"] },
+    "dimensions_checked": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["atomicity", "intermediate_gaps", "ambiguity", "success_criteria", "dependency_explicitness", "handoff_clarity"] }
+    },
+    "findings": {
+      "type": "array",
+      "description": "All granularity findings (escalated and report-only). item.title = topic slug source.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "dimension", "plan_location", "issue", "quoted_text", "example_fix", "severity", "generates_challenge"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "dimension": { "type": "string", "enum": ["atomicity", "intermediate_gaps", "ambiguity", "success_criteria", "dependency_explicitness", "handoff_clarity"] },
+          "plan_location": { "type": "string" },
+          "issue": { "type": "string" },
+          "quoted_text": { "type": "string" },
+          "example_fix": { "type": "string" },
+          "severity": { "type": "string", "enum": ["BLOCKING", "SIGNIFICANT", "MINOR"] },
+          "generates_challenge": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "escalated_challenges": {
+      "type": "array",
+      "description": "BLOCKING/SIGNIFICANT findings escalated to challenges. origin=granularity.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "origin", "claim", "concern", "failure_scenario", "alternative", "severity", "confidence", "status", "resolution", "iteration_introduced"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "origin": { "type": "string", "enum": ["granularity"] },
+          "claim": { "type": "string" },
+          "concern": { "type": "string" },
+          "failure_scenario": { "type": "string" },
+          "alternative": { "type": "string" },
+          "severity": { "type": "string", "enum": ["BLOCKING", "SIGNIFICANT", "MINOR"] },
+          "confidence": { "type": "string", "enum": ["HIGH", "MED", "LOW"] },
+          "status": { "type": "string", "enum": ["OPEN", "RESOLVED", "UNRESOLVED", "DEFERRED", "WITHDRAWN"] },
+          "resolution": { "type": "string" },
+          "iteration_introduced": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  }
+}

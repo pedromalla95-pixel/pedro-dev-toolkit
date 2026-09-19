@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "description": "Consolidated research role: Mode 1 RESOLVE (unknowns) + Mode 2 SURFACE + Mode 3 PROBE. In the Claude topology Mode 1 is gsd-phase-researcher and Modes 2-3 are plan-researcher; the codex backend collapses them into one call.",
+  "required": ["verdict", "summary", "unknowns_resolutions", "surfaced_contexts", "probed_risks", "findings"],
+  "properties": {
+    "verdict": { "type": ["string", "null"], "description": "Researcher never issues a verdict. Always null." },
+    "summary": { "type": "string", "minLength": 1 },
+    "unknowns_resolutions": {
+      "type": "array",
+      "description": "Mode 1 RESOLVE: resolution of each unknown from the challenger's manifest (passed in iteration_state).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "type", "resolution", "finding"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "type": { "type": "string", "enum": ["FILE_MISSING", "API_BEHAVIOR", "PRIOR_DECISION", "STALE_KNOWLEDGE", "INTEGRATION_UNKNOWN"] },
+          "resolution": { "type": "string", "enum": ["CONFIRMED", "REFUTED", "UNRESOLVABLE", "PARTIALLY_RESOLVED"] },
+          "finding": { "type": "string", "description": "[VERIFIED: source | finding | impact]" }
+        }
+      }
+    },
+    "surfaced_contexts": {
+      "type": "array",
+      "description": "Mode 2 SURFACE: context from memory/codebase/CLAUDE.md/git nobody connected to the plan.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "source", "location", "relevance", "impact", "generates_challenge"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "source": { "type": "string", "enum": ["memory", "codebase", "claude_md", "git_history"] },
+          "location": { "type": "string" },
+          "relevance": { "type": "string" },
+          "impact": { "type": "string", "enum": ["changes_needed", "confirms_approach", "contradicts_plan"] },
+          "generates_challenge": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "probed_risks": {
+      "type": "array",
+      "description": "Mode 3 PROBE: blind-spot risks from divergent exploration.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "risk", "trigger", "cascade", "probability", "severity", "generates_challenge"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "risk": { "type": "string" },
+          "trigger": { "type": "string" },
+          "cascade": { "type": "string" },
+          "probability": { "type": "string", "enum": ["LOW", "MED"] },
+          "severity": { "type": "string", "enum": ["BLOCKING", "SIGNIFICANT", "MINOR"] },
+          "generates_challenge": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "description": "New challenges generated from contradicting surfaced contexts (origin=surfaced) and SIGNIFICANT+ probed risks (origin=probed). item.title = topic slug source.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "origin", "claim", "concern", "failure_scenario", "alternative", "severity", "confidence", "status", "resolution", "iteration_introduced"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "minLength": 1 },
+          "origin": { "type": "string", "enum": ["surfaced", "probed"] },
+          "claim": { "type": "string" },
+          "concern": { "type": "string" },
+          "failure_scenario": { "type": "string" },
+          "alternative": { "type": "string" },
+          "severity": { "type": "string", "enum": ["BLOCKING", "SIGNIFICANT", "MINOR"] },
+          "confidence": { "type": "string", "enum": ["HIGH", "MED", "LOW"] },
+          "status": { "type": "string", "enum": ["OPEN", "RESOLVED", "UNRESOLVED", "DEFERRED", "WITHDRAWN"] },
+          "resolution": { "type": "string" },
+          "iteration_introduced": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  }
+}
