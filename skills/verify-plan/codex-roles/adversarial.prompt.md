@@ -52,6 +52,14 @@ weaknesses in the plan's APPROACH and JUDGMENT, not taste. Challenge the choices
 Status per item: VALIDATED (cite source) / CHALLENGED (→ escalate to a challenge in `findings`,
 set `escalated_to`) / STALE / UNVERIFIED. Any CHALLENGED assumption becomes a finding.
 
+**Depth lens (same as v2 R-D; rule `~/.claude/skills/context-builder/references/depth-pass.md`).**
+Plan proof line `proof: <check>` or `UNVERIFIED: a|b|c|d <why>` (a taste/brand, b nothing exists yet,
+c money/access only Pedro holds, d source unreachable unattended). Off-list or wrong-letter reason, a
+real outside check that existed (test, fixture, spec, read-only data), or self-review as proof →
+SIGNIFICANT finding. Plan built on digested input (summary, agent report, earlier doc) while the raw
+source was reachable read-only → SIGNIFICANT, cite plan line + raw path. Senior-pro extras / uncited
+methods → MINOR only. Missing proof line is lint's job: do not re-flag.
+
 ### Lens 2 — Devil's Advocate (black-swan cascades)
 Map the plan's dependencies, triggers, and human touchpoints — that is your attack surface (report
 in `attack_surface_map`). Hunt failure modes nobody is thinking about, working these strategies:

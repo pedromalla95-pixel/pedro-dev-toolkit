@@ -39,6 +39,14 @@ The interviewer selects a base template by deliverable type, then fills slots fr
     <risks>{known_risks_and_how_to_handle}</risks>
   </requirements>
 
+  <depth_pass>
+    <!-- 4 parts per context-builder/references/depth-pass.md; `skip: <why>` if nothing real -->
+    <senior_role>{concrete_senior_role — what they'd do unasked}</senior_role>
+    <raw_sources>{rawest_source paths/URLs read, or named + unreachable}</raw_sources>
+    <methods>{role_methods_and_tools, cited}</methods>
+    <extras_listed>{deliverables the pro would add — listed only, user picks}</extras_listed>
+  </depth_pass>
+
   <output_spec>
     <!-- EXACT deliverable format -->
     <format>{file_type, structure, sections}</format>
@@ -58,6 +66,12 @@ The interviewer selects a base template by deliverable type, then fills slots fr
     <!-- NEEDS INPUT: Zero signal, cannot even guess responsibly -->
     <!-- [NEEDS INPUT: specific question to resolve this slot] -->
   </assumptions>
+
+  <verification>
+    <!-- depth-pass part 4: exactly one of these -->
+    <outside_proof>{test, spec, real data, live check, end user, independent model}</outside_proof>
+    <unverified reason="a|b|c|d">{why + closest proxy}</unverified>
+  </verification>
 </mega-prompt>
 ```
 
@@ -67,7 +81,7 @@ The interviewer selects a base template by deliverable type, then fills slots fr
 |------|-----|------|--------|
 | Convention | `<convention reason="...">` | Low | Proceed silently. These are standard domain defaults (e.g., "professional tone for business doc"). |
 | Inferred | `<inferred reason="...">` | Medium | Surface for review in the presentation. User should confirm or correct. |
-| Guessed | `<guessed reason="...">` | High | **Blocker.** Must be confirmed before proceeding. Counts against the assumption budget. |
+| Guessed | `<guessed reason="...">` | High | **Blocker.** Must be confirmed via `AskUserQuestion` or converted to `[NEEDS INPUT]` before the approval gate. Zero allowed at approval. |
 | Needs Input | `[NEEDS INPUT: question]` | Critical | Cannot proceed without answer. Triggers follow-up (see below). |
 
 **NEEDS INPUT handling:**
@@ -273,13 +287,16 @@ Before presenting the mega-prompt, verify each item. If a check fails, take the 
 |-------|-------------|
 | Every `<guessed>` tag has clear reasoning | Add reasoning, or convert to `[NEEDS INPUT]` if you can't justify the guess |
 | No slot is left as a placeholder (`{...}`) | Fill from state, mark as `<convention>`, `<inferred>`, or `[NEEDS INPUT]` |
-| `<guessed>` count ≤ assumption budget | Return to interview for highest-risk gaps (those without even weak signal) |
+| `<guessed>` count = 0 | Confirm each via `AskUserQuestion`, or convert to `[NEEDS INPUT]` |
+| Logic audit (SKILL.md step 3) passed: trace up, trace down, contradictions, pre-mortem, undefined terms | Return to step 3; ask the failing item |
+| Every `<inferred>` cites a specific user answer or file in `reason` | Downgrade to `<guessed>` and confirm |
 | Priority / #1 concern is prominently reflected | Move it to `<priority>` field and ensure `<approach>` addresses it |
 | Tone matches what the user described | Re-read the user's own words; replace "professional" with their actual descriptor |
 | Scope is bounded — no unbounded "and more" | Replace vague scope with explicit must-have/nice-to-have split |
 | Output spec is concrete enough to judge "done" | Add measurable criteria (word count, section list, file type) |
 | Counterarguments / risks are addressed, not ignored | Add `<risks>` entries for any mentioned concerns |
 | `[NEEDS INPUT]` count is ≤ 2 | If 3+, return to interview — synthesis is premature |
+| Depth pass filled (4 parts) + outside proof or UNVERIFIED a-d | Run depth-pass.md; ask once if a source is unreachable |
 
 ## Presentation Format
 

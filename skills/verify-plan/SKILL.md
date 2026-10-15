@@ -9,7 +9,7 @@ description: >-
 
 # Verify Plan V2
 
-Convergence loop orchestrator for adversarial plan verification. The Step 3a challenge fan-out runs through the saved `plan-challenge` workflow (fresh workers per iteration); the synthesizer is a fresh one-shot agent spawn. No persistent agents, no agent-to-agent messaging. Reason (verified against `claude` 2.1.218, 2026-07-23): the harness hardcodes a subagent tool-pool filter that strips `AskUserQuestion` and `Workflow` from *every* subagent and skill fork, and gates `Agent` behind `agentDepth < CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` (default 1, i.e. main thread only). No frontmatter, agent file, or setting can restore them — `plan-fork-agent.md`'s claim to "carry the `AskUserQuestion` grant a plain fork lacks" is false on this version. Under a fork, Step 3a's fan-out and the Step 3c synthesizer spawn cannot dispatch, and the skill silently degrades to a single-context review while still emitting multi-role verdict format. Do not re-add the fork without first re-probing that filter. References to "main thread" throughout this file mean whichever context is running this skill body. That context holds all state and serializes communication. Role charters live in `challenger-charters/` inside this skill — the old hard dependency on `~/.claude/agents/plan-*.md` is retired on the primary path.
+Convergence loop orchestrator for adversarial plan verification. The Step 3a challenge fan-out runs through the saved `plan-challenge` workflow (fresh workers per iteration); the synthesizer is a fresh one-shot agent spawn. No persistent agents, no agent-to-agent messaging. Runs inline: the harness strips `AskUserQuestion` and `Workflow` from *every* subagent and skill fork (`Agent` is not depth-blocked; see `rules-recall/known-limits-agents.md`), so under a fork Step 3a's fan-out cannot dispatch and the skill silently degrades to a single-context review. Do not re-add the fork without first re-probing that filter. "Main thread" in this file = whichever context runs this skill body; it holds all state and serializes communication. Role charters live in `challenger-charters/` inside this skill — the old hard dependency on `~/.claude/agents/plan-*.md` is retired on the primary path.
 
 ## Pipeline Position
 
@@ -20,6 +20,8 @@ Plan written → /verify-plan (THIS) → Execution
 ## Invocation
 
 `/verify-plan [path] [--team=base|scaled] [--threshold=N]`
+
+**Routing (v2 default for callers, 2026-09-27).** Args are a JSON object, or `--v2 '<json args>'` → stop reading here and follow `SKILL-v2.md` in this directory (one review round, verdict.json). `--v1`, a bare path, or prose → v1, everything below. plan-phase step 10 and plan-perfector pass JSON, so they get v2. v1 removed in Phase 5 of `plans/abundant-skipping-meerkat.md`.
 
 Path resolution order:
 1. Explicit path argument (e.g., `/verify-plan .claude/plans/my-plan.md`)
@@ -41,7 +43,7 @@ When these keywords appear in the plan body (case-insensitive, word-boundary mat
 **Environment state:** `.env`, `.env.local`, `.env.production`, `env var`, `secret`, `credential`, `service role`
 **Cloud infra:** `vercel`, `supabase`, `aws`, `gcp`, `cloudflare`, `deploy`, `deployment`, `production`, `prod`, `staging`
 **Cross-env coupling risk:** `migration`, `database url`, `project ref`, `connection string`, `feature flag`, `rollout`
-**Money/tax paths:** `invoice`, `itbis`, `fiscal`, `ncf`, `rnc`, `tax`, `payroll`, `suplidor`, `ledger`, `inventory`, `inventario`, `backfill` (added 2026-08-07 — sized by `~/.claude/plans/gate-fitness-audit.md`; `hook` deliberately rejected there, see its Rejected section)
+**Money/tax paths:** `invoice`, `itbis`, `fiscal`, `ncf`, `rnc`, `tax`, `payroll`, `suplidor`, `ledger`, `inventory`, `inventario`, `backfill` (`hook` is deliberately excluded)
 **Local self-infra:** `systemd`, `systemctl`, `daemon`
 **Multi-surface tests:** `stress test`, `e2e`, `smoke test`, `integration test` (combined with any cloud/env keyword above)
 
@@ -53,17 +55,10 @@ Two constraints the keyword list above does not show on its face:
 
 Bias: a false positive costs tokens (an over-scaled verify); a false negative silently skips the mandatory empirical probe on a plan that touches live infra. When in doubt, flag.
 
-**Measured firing, phase 23 of `adm-cloud-mcp` (2026-09-04).** Counted across `23-01/02/03-PLAN.md`:
-money/tax list — `backfill` ×174, `ncf` ×82, `invoice` ×19, `tax` ×6, `inventory` ×2; cloud/env list —
-`production` ×25, `migration` ×4. **All five money/tax hits are TRUE positives** — adm-cloud-mcp is a
-DGII money/posting repo and those are exactly the concepts the list exists to catch; the forced SCALED
-was the rule working, not a defect. The two cloud/env hits are false positives in the infra sense
-(`production` matches "production code path"/"production surface", `migration` matches an in-code data-shape
-migration, not a live deployment or schema migration) — but they are **not** removed: on this repo the
-money/tax hits force SCALED anyway, and per the Bias above a false negative is the expensive error.
-No keyword was removed and no per-repo override was added.
+Money/tax keywords produce true positives on money repos; generic words like "production" and
+"migration" can false-positive, but per the Bias above they stay.
 
-**Executable mirror:** `~/.claude/hooks/plan-verifier.js` § `INFRA_RE` (in `scanComplexity`) implements this rule and gates whether a plan gets verified at all. This section and that regex must stay in sync — changing one without the other reintroduces the drift that made this doc claim "substring" while the hook did `\b`. Verified 0 false-positive / 0 false-negative against a 45-case matrix, 2026-07-16.
+**Executable mirror:** `~/.claude/hooks/plan-verifier.js` § `INFRA_RE` (in `scanComplexity`) implements this rule and gates whether a plan gets verified at all. This section and that regex must stay in sync.
 
 ## Team Composition
 
@@ -87,7 +82,8 @@ No keyword was removed and no per-repo override was added.
 
 The four Rumsfeld quadrants are a one-line framing the synthesizer uses to sanity-check that no
 *category* of knowledge gap was ignored. This is framing only — there is no coverage score and no
-gate; the verdict is driven entirely by BLOCKING/SIGNIFICANT challenge count.
+gate; the verdict is driven entirely by BLOCKING/SIGNIFICANT challenge count. Don't re-add a SWOT
+phase, Rumsfeld-as-gate, or a quality score.
 
 - **Q1 — Unknown Knowns:** context in memory/codebase/git nobody connected to this plan (research Lane 1/2).
 - **Q2 — Known Unknowns:** gaps the challenger flagged that need research (unknowns manifest + research).
@@ -100,6 +96,8 @@ gate; the verdict is driven entirely by BLOCKING/SIGNIFICANT challenge count.
 
 Check your own available tools for `Agent`, `Workflow`, and `AskUserQuestion`.
 
+A tool listed as deferred (name shown, schema withheld) is NOT missing: load it with `ToolSearch select:<name>` first, one call for all deferred ones. Only a tool still absent after that counts as missing. This skill's own instructions tell you to call `Workflow` (Step 3a), so that satisfies the `Workflow` tool's opt-in rule, including on the hook-triggered path (AAR plan-perfector 2026-10-14: 2f2c82a2, 94dda40b).
+
 **If ANY of the three is missing, STOP immediately.** Do not assess complexity, do not size a
 team, do not read the plan, and above all do not emit a `PROCEED` / `REVISE` / `RETHINK` verdict.
 Return exactly:
@@ -110,18 +108,11 @@ Multi-role fan-out cannot execute. This skill must run inline on the calling
 thread, not as a subagent or `context: fork` (see § Verify Plan V2 header).
 ```
 
-**Why this gate exists (2026-07-23):** `claude` 2.1.218 hardcodes a subagent tool-pool filter
-that strips `AskUserQuestion` and `Workflow` from every subagent/fork and gates `Agent` behind
-a spawn-depth check. Partial stripping is **silent by design** — the harness only warns when a
-subagent's resolved tool list is *empty*, never when it is merely gutted. Without this gate the
-skill runs Steps 1-5 as a single-context review by one model and returns it in full multi-role
-verdict format, which is indistinguishable from a real adversarial pass. That happened three
-consecutive times on a live 17-plan verification before anyone noticed. A single-context review
-must never be returned in multi-role verdict format.
-
-This gate is behavioral, not mechanical — the harness exposes no hook event for partial tool
-stripping, so enforcement lives here in the skill body. Doctrine must not outrun enforcement:
-state the degradation, do not paper over it.
+**Why:** partial tool stripping is silent; without this gate the skill runs Steps 1-5 as a
+single-context review and returns it in multi-role verdict format, indistinguishable from a real
+adversarial pass. A single-context review must never be returned in multi-role verdict format.
+No hook event exists for partial stripping, so enforcement lives here. Doctrine must not outrun
+enforcement: state the degradation, do not paper over it.
 
 ### Step 000 (resume): Inner-Loop Resume Check — RUNS AFTER STEP 00, BEFORE STEP 0
 
@@ -146,15 +137,8 @@ changed, `plan-scope.js` reporting `fail_open` — fail open to a normal fresh i
 continue to Step 0. This matches `plan-scope.js`'s own fail-open stance. "Cannot tell" is
 never "resume".
 
-**Why this exists (2026-09-16):** the Step 3 loop runs inline on the calling thread — it is
-not a Workflow and not a fork, deliberately, because the harness strips `AskUserQuestion`
-from every subagent and Step 3d's BLOCKED checkpoint needs it. Inline means loop state lives
-in conversation context, which compaction discards. In session `71b3fafe` the synthesizer
-returned `CONTINUE` on iteration 1 in each of three consecutive top-level invocations; each
-was followed by a compaction, each resumed by re-running Steps 1-2 from scratch with a fresh
-5-6 agent team, and because the counter reset to 1 every time, the iteration-3 circuit
-breaker never fired. Cycle 5's own synthesizer called it "a governance defect, not
-convergence."
+**Why:** loop state lives in conversation context, and compaction discards it; without this
+check a compacted run restarts at iteration 1 and the 3-iteration circuit breaker never fires.
 
 ### Step 0: Resolve Verification Backend (config-gated, additive)
 
@@ -177,15 +161,10 @@ if [ -z "$BACKEND" ] || [ "$BACKEND" = "null" ]; then BACKEND="claude"; fi
   end of this file. That section ALSO resolves `verification.codex.plan_depth` (fallback **`lite`**)
   and branches:
   - **`plan_depth=lite` (default):** run **3 merged roles in a single pass, NO convergence loop** —
-    `adversarial`, `empirical-domain`, `structural-verdict` (which emits the verdict). The
-    complexity assessment / team-sizing of Step 2 still runs for reporting, but the Step-3
-    convergence loop is replaced by the single LITE pass.
+    `adversarial`, `empirical-domain`, `structural-verdict` (which emits the verdict). Step 2
+    still runs for reporting.
   - **`plan_depth=faithful` (opt-in):** run Steps 1-5 below with one and only one substitution —
-    each per-role Task agent becomes a codex-verify call. ALL orchestration (complexity
-    assessment, team sizing, the convergence loop, the Step 3a token-budget batching, the
-    early-convergence shortcut, conditional re-run gating, directives, Step-4 verdict assembly, the
-    report file, user checkpoints) stays byte-for-byte identical. Only the leaf "ask an agent" call
-    changes engine.
+    each per-role Task agent becomes a codex-verify call. ALL orchestration stays identical.
 
   Either depth uses the same RC=3 CODEX_UNAVAILABLE pre-flight checkpoint and the same Step-4
   plan-perfector summary contract.
@@ -231,9 +210,7 @@ python3 ~/.claude/skills/verify-plan/scripts/preflight-gates.py "<ABS_PLAN_PATH>
 
 Exit 1 → do NOT dispatch the backend. Report the `UNRUNNABLE` / `SELF_INVALIDATING` /
 `UNREACHABLE` lines as findings and return `verdict: REVISE` with those lines as `key_issues`.
-These are arithmetic, not judgment — spending an adversarial pass on them is the defect this
-step exists to remove (constitution DETERMINISM-GATE: deterministic, repeats, verifiable —
-all three).
+These are arithmetic, not judgment.
 
 Exit 0, no `UNVERIFIED-GATES:` line → continue to Step 3 unchanged.
 
@@ -245,12 +222,8 @@ every code-target gate is `NOT-MODELLED` by design (the pass models prose supply
 blocking here would auto-REVISE every plan that touches code. The defect being fixed is a
 discarded signal, not an unraised alarm.
 
-**Why the third branch exists (2026-09-16):** on `wire-security-scan-and-simplifier-stages.md`
-the pre-flight reported `EXIT=0` while ten gates were admittedly unverifiable by the tool,
-each carrying the instruction "Check this gate by hand." The old two-branch contract read
-exit 0 as "continue unchanged" and dropped all ten. This matters for more than reporting:
-`protocol.md` § 7's `BLOCKED → REVISE` rung requires a blocker to be "mechanically checkable
-… verified by the gate pre-flight, not asserted", which a silent exit 0 cannot support.
+**Why:** an exit-0 pre-flight can still list gates it could not verify; dropping them loses
+the signal that `protocol.md` § 7's `BLOCKED → REVISE` rung depends on.
 
 This step reports ONLY the three blocking mechanical classes plus the one coverage-gap class. A gate
 that reads false today because a task in this plan is what makes it true is CORRECT and is never
@@ -369,7 +342,7 @@ Return: resolved unknowns, surfaced contexts (Lane 1/2), reuse findings (Lane 2)
 ```
 Merge findings into `iteration_state`; renumber escalated challenges at the Step 3a merge step.
 
-> **Temporal/external-risk probing** (formerly research "Mode 3 PROBE") is folded into the Empirical Probe phase below — it is not duplicated here. Lane 3 covers documentation/best-practice currency; the Empirical Probe covers live environment state.
+> **Temporal/external-risk probing** is folded into the Empirical Probe phase below. Lane 3 covers documentation/best-practice currency; the Empirical Probe covers live environment state.
 
 ## Empirical Probe (required when infra-flagged)
 
@@ -417,8 +390,6 @@ Verification-time probes (§ Empirical Probe above) catch drafted assumptions la
 
 **Verification-side enforcement:** when verifying an infra-flagged plan, the researcher checks whether a pre-draft probe artifact exists and is cited. Present → ratify it in `## Empirical Probe Findings`. Absent → run the § Empirical Probe set as usual AND record "no pre-draft probes were run" as a process finding.
 
-**Provenance:** recorded 2026-05-21 after Plan 13b iter-1 verification surfaced 6 of 13 challenges as embedded-assumption issues that would have been zero-cost to probe before drafting. Generalizes anti-patterns ASSUME-WRONG/8 ("do not trust drafted assumptions over probed live state") and extends the pre-change-protocol preamble pattern to plan drafting.
-
 #### Step 3c: Synthesis Phase
 
 Spawn ONE fresh `Agent(general-purpose)` as the synthesizer — pass `model: "opus"` on the Agent call (verdict quality is opus-tier; do not let it inherit the session model) — with FULL iteration state:
@@ -430,14 +401,6 @@ synthesizer an addressable long-lived teammate that delivers through `teammate-m
 some of them stale. `SendMessage`, `teammate-message`, and `idle_notification` traffic is out
 of contract for this step and must never be read as, or substituted for, the synthesizer's
 report.
-
-**Why (2026-09-16):** in session `71b3fafe` cycle 4 this call was made with
-`name: "plan-synthesizer-cycle4"`. The main thread nudged it with `SendMessage`, wrote a
-report from the first partial `teammate-message`, then received a second, stale
-`idle_notification` from the same teammate after an intervening compaction and had to correct
-itself mid-report: "Two passages in my report are now inaccurate." This also matches a
-separately recorded harness limitation — named parallel `Agent` spawns misbehave, and the
-logged workaround is to retry the identical call without `name`.
 
 ```
 Read /home/pedro/.claude/skills/verify-plan/challenger-charters/plan-synthesizer.md with the Read
@@ -465,6 +428,17 @@ Read Synthesizer output. Update `iteration_state.convergence`.
 **Early convergence shortcut:** If after iteration 1 there are zero BLOCKING challenges AND every challenge status is RESOLVED, DEFERRED, or WITHDRAWN, exit the loop immediately → Step 4. Do not run iterations 2-3. This prevents 30-60K tokens of waste when the first pass resolves everything.
 
 **Between iterations (non-blocking):** Update user with progress summary.
+
+**Redesign checkpoint.** Fires once, before Step 4, when the plan has not converged AND either
+iteration 3 just finished or the cross-cycle state's `cycle` is 3 or higher. Challenge counts
+are uncapped, so this is the brake on a loop that only patches. Spawn ONE fresh
+`Agent(general-purpose)` with `model: "opus"` — not a challenger, not the synthesizer — given the
+plan path, the full `iteration_state`, and `closed_findings`. Ask it: "Step back from the
+individual challenges. Is this approach converging on a shippable plan, or are the iterations
+patching a flawed design and spending tokens without getting closer? Answer KEEP (name the real
+defects still being found) or REDESIGN (name the flawed premise and the approach a from-scratch
+plan should take)." REDESIGN → the final verdict is RETHINK, with that premise as its first
+structural issue. KEEP → Step 4 unchanged; quote its one-line reason in the yield line.
 
 **Write cross-cycle state.** After Step 3d resolves this iteration (CONVERGED,
 BLOCKED-pending-response, CONTINUE, or FORCED_EXIT), update
@@ -496,10 +470,8 @@ This write is what makes `CONTINUE` mean "continue" across a compaction. Write i
 outcome, not only `CONTINUE` — a `CONVERGED` or `FORCED_EXIT` value is what stops the Resume
 Check from re-entering a loop that already finished.
 
-Schema: `~/.claude/skills/verify-plan/cross-cycle-state.md`. Before this task, nothing wrote this
-file — it is documented and read (codex role prompts, `planner-revision.md`) but never produced.
-This step is now the only writer; keep it that way — do not let a second call site re-derive the
-write.
+Schema: `~/.claude/skills/verify-plan/cross-cycle-state.md`. This step is the only writer of this
+file; keep it that way — do not let a second call site re-derive the write.
 
 ### Fail-Loud Checkpoint Protocol
 
@@ -512,18 +484,22 @@ A checkpoint that silently no-ops or auto-resolves instead of surfacing to the u
 the same class of silent degradation as a gutted tool pool — it must fail loud, not quiet.
 
 Note this guard is NOT a substitute for the Step 00 capability gate: it fires only on a
-BLOCKED verdict, so a run that converges to REVISE never reaches it. That is precisely how
-three consecutive degraded runs went undetected — the fan-out was gutted, but the only
-fail-loud check sat on a branch those runs never took. Step 00 covers the whole run.
+BLOCKED verdict, so a run that converges to REVISE never reaches it. Step 00 covers the whole run.
 
 ### Step 4: Final Verdict
 
 > **PROCEED-gate (infra-flagged plans only):** If the plan is infra-flagged (see § Infra Triggers) AND the verification report lacks an "Empirical Probe Findings" section with at least one completed probe (not all "unknown — tool unavailable"), the synthesizer MUST downgrade the verdict from PROCEED to REVISE and list "missing empirical probe" as a structural issue. PROCEED is forbidden without probe evidence.
 
+**Yield line (cycle 2+, verdict not PROCEED):** end the reply to Pedro with one line: how many
+real defects this cycle found vs wording/churn fixes, and a recommendation: run another cycle, or
+replan from scratch. Base it on the count. A cycle still finding real defects means continue — the highest-value
+findings have come from late cycles and from outside the narrowed scope; a cycle finding mostly
+wording/churn means recommend replanning, since it is spending tokens without moving the plan.
+
 **Verdict-presence + correspondence guard:** write the verdict, Resolution table, and
-all sections below to the on-disk report file BEFORE returning from this fork — this
+all sections below to the on-disk report file before returning — this
 report is what any caller (plan-perfector, or a human) reads as the source of truth,
-never the fork's return string alone. The report's filename timestamp AND an explicit
+never the skill's return text alone. The report's filename timestamp AND an explicit
 `cycle: {N}` header line (N = the iteration_state's current iteration/cycle) together
 serve as this run's token, so a caller can detect and reject a stale leftover report
 from an earlier cycle instead of trusting mere file presence.
@@ -558,7 +534,7 @@ origin_cwd: /home/pedro/Projects/<...>
 - `plan_hash` — compute via `node ~/.claude/hooks/lib/plan-hash.js <plan-file-path>` (sha256 hex of the plan body with YAML frontmatter stripped; never mtime — see that script's own header for why). Do not hand-compute this hash.
 - `origin_cwd` — the shell's own `pwd` at the point this skill is running (this skill runs inline on the calling thread, so it holds the origin session's cwd).
 - `plan_path` / `plan_paths` — **`plan_path` is REQUIRED, singular, and never renamed.** It carries the primary plan and is the key live consumers parse: `hooks/plan-handoff-trigger.js:137` reads `block.plan_path` and skips any artifact lacking it (so a missing key silently disables plan-handoff auto-execute), and `hooks/plan-verifier.js:143` joins artifact→plan on it. `plan_paths` is an ADDITIVE second key for multi-plan verification: a comma-separated list in lexicographic filename order, equal to `plan_path` on a single-plan run. Adding `plan_paths` needs no hook change; renaming or dropping `plan_path` breaks both hooks above.
-- **Multi-plan verification MUST commit its report generator under the phase directory.** The phase-23 generator (`scratchpad/write-report-r5.py`) was referenced by its own report at `23-PLAN-VERIFICATION.md:7` and no longer exists on disk, so that report's numbers cannot be reproduced.
+- **Multi-plan verification MUST commit its report generator under the phase directory**, so the report's numbers stay reproducible.
 - Emit this block on **every** verdict — PROCEED, REVISE, RETHINK, and the trivial fast path.
 - **This trailer's `verdict`/`blocking_open`/`significant_open` fields are owned exclusively by a completed Step 3 convergence loop (a real fan-out + synthesis).** A later hand-patch/fix-application pass — applying a prior cycle's findings by direct edit, with no fresh fan-out — must NEVER write or edit an existing trailer's `verdict`, `blocking_open`, or `significant_open` fields, even when every finding it fixed is real and every fix is correct. It may append a new `plan_hash` (hashes are safe to update by hand) and a prose fix-summary elsewhere in the report, but the existing trailer block stays exactly as the last real fan-out left it until another real fan-out runs. State plainly that the plan is unverified pending re-run (see `~/.claude/skills/verify-plan/` project usage precedent: a hand-patch round once wrote an optimistic result by hand and it regressed — the fix was to never do that again, not to be more careful doing it). This matters because `plan-handoff-trigger.js` auto-launches execution on `verdict: PROCEED` — a hand-written PROCEED after an un-reviewed patch pass would auto-execute a plan nobody actually re-checked.
 
@@ -575,6 +551,12 @@ step — the "ask an agent" — from a Claude Task agent to a `codex-verify.mjs`
 does NOT change any orchestration: the convergence loop, team sizing, the Step 3a token-budget
 batching, gating, directives, and Step-4 assembly all stay exactly as Steps 1-5 describe. Contract reference:
 `~/.claude/get-shit-done/references/codex-verification-adapter.md`.
+
+**Editing `codex-roles/*.schema.json`:** OpenAI strict mode requires `required` to list EVERY key in
+`properties`. If one is missing, the API returns HTTP 400 before the model runs, and `codex-verify.mjs`
+reports it as `PARSE_ERROR` with an empty `raw`. Treat an empty-raw PARSE_ERROR as a schema problem
+first. After any schema edit, run `node ~/.claude/get-shit-done/bin/validate-codex-schemas.mjs`
+plus one live role call.
 
 ### Role → helper mapping
 
@@ -749,13 +731,9 @@ identical):
   per-role finding — use the final call's normalized topics so the field matches the existing
   contract.
 
-> **LITE & plan-perfector oscillation guard:** LITE is a single internal pass, so there is no second
-> codex iteration to oscillate against. This does NOT affect plan-perfector: its oscillation/
-> regression guard compares `issue_count`/`challenge_topics` across plan-perfector's OWN cycles
-> (each cycle = one full `/verify-plan` invocation), never across verify-plan's internal iterations
-> (which plan-perfector never sees — it reads only the Step-4 summary). A LITE run returns a terminal
-> verdict + a stable `findings[]`, exactly what plan-perfector expects from one cycle. No ≥2-iteration
-> requirement exists on either side.
+> **LITE & plan-perfector oscillation guard:** unaffected — plan-perfector compares
+> `issue_count`/`challenge_topics` across its OWN cycles (each = one full `/verify-plan` invocation),
+> and a LITE run returns a terminal verdict + a stable `findings[]`.
 - `report_path` ← the verification report path (write the same report file the Claude path writes,
   including all the Step-4 sections; for infra-flagged plans the `## Empirical Probe Findings`
   section is still required — instruct the researcher role to collect those probes).
@@ -777,8 +755,6 @@ Between iterations (non-blocking): `"Iteration N: X resolved, Y remaining. Conti
 ## Communication Topology
 
 Main thread is the hub. No direct agent-to-agent messaging — so a debating `TeamCreate` team is unnecessary; the fan-out runs inside the `plan-challenge` Workflow (legacy fallback: parallel `Agent` spawns). Each worker receives full input from the main thread (via workflow args) and returns output to the main thread (via the workflow envelope).
-
-In Step 3a the challenger and researcher, plus whichever of granularity-checker, devils-advocate, and domain-expert this iteration's gates selected, run CONCURRENTLY inside one Workflow call because they are independent. Their only coupling — challenge-ID numbering — is resolved by renumbering all challenge IDs at the main-thread merge step. The synthesizer runs LAST, after the workflow returns. Concurrency is a LATENCY optimization, not a token saving.
 
 ```
 Main Thread (orchestrator + state holder)
@@ -805,56 +781,22 @@ Main Thread (orchestrator + state holder)
 | Scaled team, 2 iterations | ~144K | ~189K |
 | Scaled team, 3 iterations | ~188K | ~263K |
 
-Devils-advocate (Step 3a) is a BASE worker (sonnet) on iteration 1 — the base-team figures above include one extra sonnet challenge worker (~+18K on iteration 1). On iterations 2-3 it is gated at spawn time like granularity: it is not started at all unless the synthesizer's directives carry `RE-ADVERSARIAL`. The base-team rows above already assume that near-zero iteration-2/3 cost, so they are unchanged by the gate — previously the worker was spawned and sent its full input before deciding to stay quiet, so the documented figures were optimistic; they are now accurate. Under budget pressure it is dropped only AFTER granularity (challenger + researcher stay mandatory; the ~70K abort floor is unchanged). The SCALED rows have NOT been re-measured for `run_domain_expert` gating — gating domain-expert should reduce scaled iteration-2/3 cost, but by how much is unverified, so the scaled figures stand as a worst case.
+Devils-advocate (Step 3a) is a BASE worker (sonnet) on iteration 1 — the base-team figures above include one extra sonnet challenge worker (~+18K on iteration 1). On iterations 2-3 it is gated at spawn time like granularity: it is not started at all unless the synthesizer's directives carry `RE-ADVERSARIAL`; the base-team rows assume that. Under budget pressure it is dropped only AFTER granularity (challenger + researcher stay mandatory; the ~70K abort floor is unchanged). The SCALED rows have NOT been re-measured for `run_domain_expert` gating — gating domain-expert should reduce scaled iteration-2/3 cost, but by how much is unverified, so the scaled figures stand as a worst case.
 
 Granularity checker (Step 3a) adds ~+7K per iteration it runs. On iterations 2-3 it is conditional (only re-runs on `RE-GRANULARITY` directive or plan revision), so total granularity overhead across 3 iterations is capped at ~+18K.
 
-Running the challenger, granularity-checker, and researcher concurrently in Step 3a reduces wall-clock latency; it does NOT reduce total token cost (same work, fewer serial round-trips).
-
 ## Integration Points
 
-- Terminal check before execution (gsd-plan-checker retired 2026-07-09, folded into this skill)
+- Terminal check before execution
 - **RETHINK** → rework the plan's approach first
-- **REVISE** → user updates plan, optionally re-runs /verify-plan
+- **REVISE** → user updates plan, optionally re-runs /verify-plan. For a manual re-run: apply all accepted fixes in one batch, check the cheap signal first, re-run only the charters whose area changed, and brief them with anchors plus the diff since the last cycle. If the verdict is the same 3 re-runs in a row, stop and tell Pedro. (plan-perfector `--fix` has its own max_cycles and oscillation guard.)
 - **PROCEED** → ready to execute
 
 ## Anti-Patterns — Do NOT
 
 - **Check structure** — YAML fields, empty sections; out of scope here (gsd-plan-checker retired 2026-07-09, not replaced)
 - **Review code** — multipersona-auditor's job
-- **Use persistent agents** — fresh workflow workers / fresh synthesizer spawn per iteration
-- **Allow agent-to-agent messaging** — main thread serializes all state
-- **Use numeric scores for loop control** — binary resolution tracking only
-- **Drop or defer findings for volume** — batch them at the Step 3a merge instead; there is no challenge-count ceiling to enforce
 - **Skip complexity assessment** — always assess before team sizing
-- **Skip research Lanes 1-2** — they are mandatory for any non-trivial plan; only Lane 3 (external currency) is gated, and only on pure-internal plans with no external mention
-- **Skip Lane 3 when a library/framework/SDK/API/app/repo is mentioned** — Lane 3 (Context7 + web) is mandatory whenever any external thing appears in the plan
 - **Research inside plan-challenger** — unknowns manifest only, research delegated to plan-researcher
-- **Use TeamCreate for any team** — challenge phase runs as parallel `Agent` (Task) spawns; agents never message each other, so a debating team is unnecessary
-- **Compute a quality score** — verdict is driven entirely by BLOCKING/SIGNIFICANT challenge count
 - **Let granularity checker rewrite the plan** — it flags issues with concrete example_fix suggestions, but revision is plan-perfector's job. The checker diagnoses, it does not treat.
-- **Run granularity checker on TRIVIAL plans** — skip along with all other agents when plan is assessed as TRIVIAL.
 - **Demand pseudocode in plan steps** — naming files, operations, and done criteria is sufficient granularity. The checker should NOT flag steps for lacking implementation details like variable names or line-by-line code.
-- **Sequence the fan-out to keep challenge IDs ordered** — challenger, granularity-checker, and researcher run CONCURRENTLY; global challenge IDs are assigned by renumbering at the main-thread merge step, not by serializing the spawns.
-
-## Criteria
-
-- [c1] unconditional: The skill MUST read the target plan file — a Read tool_use whose input.file_path is the plan path (or a Bash/Glob path-resolution call followed by a Read of the resolved path) — BEFORE the first challenge fan-out spawn (Workflow tool_use name="plan-challenge", or any plan-* Agent/Task tool_use on the legacy fallback path) and before any verdict text block, whichever comes first.
-  matcher: requires Read.file_path regex "."
-- [c2] conditional-on: The window contains NO plan-challenge fan-out tool_result carrying an `error` key and NO codex-verify Bash tool_result with RC=3 / CODEX_UNAVAILABLE — i.e. neither of the two paths on which SKILL.md mandates STOP-without-verdict (Step 3a "surface the message verbatim and STOP... never emit a verdict from a partial fan-out"; Exit-code policy RC=3 "do NOT run any verification this turn"). — The skill MUST emit a terminal verdict line in an assistant text block containing one of the literal tokens PROCEED, REVISE, or RETHINK (the abbreviated `PROCEED (trivial)` satisfies this on the Step-2 TRIVIAL branch).
-  matcher: requires assistant_text regex "\\b(PROCEED|REVISE|RETHINK)\\b"
-  matcher-absence: exhaustive
-- [c3] conditional-on: The window contains a challenge fan-out spawn: a Workflow tool_use identifying "plan-challenge", OR one or more Agent/Task tool_use events with subagent_type in {plan-challenger, plan-researcher, plan-devils-advocate, plan-granularity-checker, plan-domain-expert}. — An assistant text block stating the complexity assessment and team sizing — a numeric complexity score AND the literal token BASE or SCALED, per the template `Complexity: N/14. Team: BASE|SCALED` — MUST appear BEFORE the first fan-out spawn event.
-  matcher: requires assistant_text regex "Complexity:\\s*\\d+/14"
-  matcher-absence: exhaustive
-- [c4] conditional-on: The window contains a challenge fan-out spawn (as defined in c3) that returned a tool_result with no `error` key. — At least one synthesizer spawn MUST occur — an Agent/Task tool_use whose prompt references `challenger-charters/plan-synthesizer.md` (or subagent_type plan-synthesizer on the legacy fallback path) — positioned AFTER a fan-out tool_result and BEFORE the final verdict text block.
-  matcher: requires Agent.prompt contains "plan-synthesizer"
-  matcher: requires Task.prompt contains "plan-synthesizer"
-  matcher: requires Agent.subagent_type equals "plan-synthesizer"
-  matcher: requires Task.subagent_type equals "plan-synthesizer"
-  matcher-absence: exhaustive
-- [c5] conditional-on: Plan content returned in a Read tool_result matches at least one § Infra Triggers keyword — case-insensitive, `\b`-guarded, inflections explicit: `secrets?`, `credentials?`, `env var`, `service role`, `vercel`, `supabase`, `aws`, `gcp`, `cloudflare`, `deployments?`, `production`, `prod`, `staging`, `migrat(e|es|ed|ing|ion|ions)`, `database url`, `project ref`, `connection string`, `feature flag`, `rollout`, `invoices?`, `itbis`, `fiscal(es)?`, `ncfs?`, `rnc`, `tax(es)?`, `payroll`, `suplidor(es)?`, `ledgers?`, `backfill(s|ed|ing)?`, `inventory`, `inventario`, `system(d|ctl)`, `daemons?`; plus `.env`/`.env.local`/`.env.production` with a `(?:^|[^\w.])` left-guard (a `\b` cannot guard a leading dot). Apply the regex — do not eyeball it; it is mirrored executably at ~/.claude/hooks/plan-verifier.js § INFRA_RE. — The verification output MUST contain a section titled exactly `## Empirical Probe Findings`.
-  matcher: requires assistant_text contains "## Empirical Probe Findings"
-  matcher-absence: exhaustive
-- [c6] conditional-on: The plan is infra-flagged per the c5 keyword regex AND the final verdict text block contains PROCEED. — The `## Empirical Probe Findings` section MUST contain at least one bullet that is not the literal `unknown — tool unavailable`.
-  matcher: requires assistant_text contains "## Empirical Probe Findings"

@@ -185,6 +185,44 @@ No — `py` still resolves via the shim. Documentation-only correction.
 
 ---
 
+## 2026-09-30 — v2.1
+
+### Summary
+Add shared gap-review step (4 parallel fresh reviewers) gating all elicitation faces.
+
+### Changes
+- references/gap-review.md: new canonical prompt (digest, 4 lenses, merge/rank, ask, loop max 3, closing check).
+- SKILL.md: Rule 7 gap review gate.
+- ~/.claude/skills/reverse-prompt/SKILL.md, ~/.claude/skills/gsd-discuss-phase/SKILL.md, get-shit-done/workflows/discuss-phase.md: cite gate.
+- ~/.claude/commands/gap-review.md: manual `/gap-review`.
+
+### Rationale
+Gaps surfaced late; each face swept differently. One shared prompt, context-builder owns it (drift rule).
+
+### Breaking
+No. GSD workflow edit may be overwritten by a GSD reinstall.
+
+---
+
+## 2026-10-15 — Depth pass (deeper, not bigger)
+
+### Summary
+Shared 4-part depth pass (senior role, rawest source, cited methods, outside proof) + role library.
+
+### Changes
+- references/depth-pass.md: new canonical rule (owner context-builder). Faces cite it.
+- SKILL.md: Step 0.5 Depth pass (all tiers); Announce renumbered 0.6; Rule 7 depth end gate; Contract bullet.
+- verify.py: EXPECTED_REFERENCES += gap-review.md (pre-existing gap) + depth-pass.md.
+- ~/.claude/scripts/roles.py: role-library helper (only writer of ~/.claude/roles/).
+
+### Rationale
+Pedro: outputs grew bigger, not deeper; built on digested inputs; called done without outside proof. Plan: ~/.claude/plans/scalable-roaming-minsky.md.
+
+### Breaking
+No. Revert: git revert of the depth-pass commits (tag pre-depth-pass).
+
+---
+
 ## Discipline rule
 
 Any future edit to this skill MUST:

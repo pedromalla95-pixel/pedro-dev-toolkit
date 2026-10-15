@@ -27,6 +27,8 @@ EXPECTED_REFERENCES = [
     "research-log-template.md",
     "interview-state-schema.md",
     "assumptions-mode.md",
+    "gap-review.md",
+    "depth-pass.md",
 ]
 
 # Word-boundary anti-patterns (single-word or must-have-word-boundary)

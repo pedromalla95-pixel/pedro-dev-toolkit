@@ -212,6 +212,17 @@ def classify(cmd, expected, repo_root, files_modified, budget=None):
         # defect. Observed once in ~25 runs of the phase-23 corpus, 2026-09-04.
         rc, out, err = run_gate(cmd, repo_root, min(30, max(1, budget.left() if budget else 30)))
         if unrunnable(rc, out, err):
+            # A done-gate on a file the plan itself creates fails "No such file" before the
+            # work runs — correct, same as the mismatch case below. Only when EVERY missing
+            # path is in files_modified, so a typo'd path still surfaces as UNRUNNABLE.
+            norm_mod = {os.path.normpath(f) for f in files_modified}
+            missing = [r for r in path_tokens(cmd) if not os.path.exists(os.path.join(repo_root, r))]
+            if ("no such file or directory" in err.lower() and missing
+                    and all(os.path.normpath(r) in norm_mod for r in missing)):
+                return "OK", (
+                    f"{missing[0]} does not exist yet but IS in files_modified "
+                    "— correct post-task done-gate, the plan creates it"
+                )
             return "UNRUNNABLE", f"exit {rc} (twice): {err or out or 'no output'}"
 
     exp_n, obs_n = as_int(expected), as_int(out)
@@ -571,6 +582,14 @@ def main(argv):
             if bucket == "NOT-MODELLED":
                 print(f"UNVERIFIED-GATE {path}:{n} `{cmd}`")
 
+    # Outside-proof line (rules-ref/plan-contract.md §3). Advisory only: never touches the exit code.
+    for p in args.plans:
+        secs = re.findall(r"^##\s+(?:Tests|Verification)\b[^\n]*\n(.*?)(?=^##\s|\Z)|<verification>(.*?)</verification>",
+                          open(p).read(), re.M | re.S)
+        if not any(re.match(r"^(proof: .+|UNVERIFIED: [abcd] .+)$", l.strip())
+                   for s in secs for l in "".join(s).splitlines()):
+            print(f"WARN-NO-PROOF {p}")
+
     # UNREACHABLE joins the exit-1 set. A gate that cannot go green on a correct
     # implementation is arithmetic, not judgment — exactly what this step exists to
     # catch before a backend is dispatched.
@@ -621,6 +640,19 @@ def self_test():
         )
         c = check_plan(clean, repo)
         assert [x[0] for x in c] == ["OK"], c
+
+        # Gate on an ABSENT file the plan creates -> OK (post-task done-gate). A typo'd path
+        # not in files_modified stays UNRUNNABLE; a mix of created + typo'd stays UNRUNNABLE.
+        created = os.path.join(d, "N-PLAN.md")
+        open(created, "w").write(
+            "---\nfiles_modified:\n  - new.txt\n---\n"
+            "`command grep -c 'hello' new.txt` — 2\n"
+            "`command grep -c 'hello' typo.txt` — 2\n"
+            "`command grep -c 'hello' new.txt typo.txt` — 2\n"
+        )
+        n = check_plan(created, repo)
+        assert [x[0] for x in n] == ["OK", "UNRUNNABLE", "UNRUNNABLE"], n
+        assert "plan creates it" in n[0][4], n[0][4]
 
         with open(plan, encoding="utf-8") as fh:
             assert parse_files_modified(fh.read()) == ["target.txt"]

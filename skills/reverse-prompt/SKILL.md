@@ -22,15 +22,21 @@ A **face** of the canonical elicitation brain (`context-builder`), alongside gri
 
 On `/interview [goal]` (or auto-detect): parse the goal, extract what's already clear, propose a depth:
 
-| Depth | Questions | When | Assumptions max |
-|-------|-----------|------|-----------------|
-| QUICK | 3-5 | Simple, single-domain, clear deliverable | 2 |
-| STANDARD | 6-10 | Multi-faceted, some unknowns | 4 |
-| DEEP | 10-15 | Complex, multi-stakeholder, high-stakes, vague | 6 |
+| Depth | Questions | When |
+|-------|-----------|------|
+| TRIVIAL | 3-5 | Simple, single-domain, clear deliverable |
+| MODERATE | 5-15 | Multi-faceted, some unknowns |
+| COMPLEX | 15+ | Complex, multi-stakeholder, high-stakes, vague |
+
+Every tier: zero `<guessed>` at approval gate. Question count = floor, not ceiling; gates below decide when interview ends.
 
 **Fast-path**: if the goal already gives deliverable + audience + success criteria + constraints, skip to Synthesis and confirm via `AskUserQuestion` — question: "This looks fully specified. Proceed?", options: `Generate now (Recommended)` / `Run a full interview instead`.
 
-Otherwise restate the calibration (goal, detected domain, facts already known) as plain text, then confirm the proposed depth via `AskUserQuestion` — question: "How deep should this interview go?", options built from the depth table: `QUICK (Recommended)` / `STANDARD` / `DEEP` (only include the tiers that make sense for this goal, max 4 options), each option's description = its question-count + when-to-use from the table above.
+**Evaluate-path**: goal = judge existing suggestion/artifact ("should we add X", "evaluate this hook") → check files/docs first; report findings, ask only open decisions (1-3 `AskUserQuestion`). No depth gate, no gap review.
+
+**Depth pass** (before depth question): Read `/home/pedro/.claude/skills/context-builder/references/depth-pass.md`, run its 4 parts. Its ≤4-line block goes in the calibration restate; shapes questions + Recommended options; full detail → mega-prompt `<depth_pass>`.
+
+Otherwise restate the calibration (goal, detected domain, facts already known, depth-pass block) as plain text, then confirm the proposed depth via `AskUserQuestion` — question: "How deep should this interview go?", options built from the depth table: `TRIVIAL (Recommended)` / `MODERATE` / `COMPLEX` (only include the tiers that make sense for this goal, max 4 options), each option's description = its question-count + when-to-use from the table above.
 
 ### 2. Interview — delegate to the brain
 
@@ -39,26 +45,41 @@ Read `/home/pedro/.claude/skills/context-builder/SKILL.md` with the Read tool an
 Do NOT invoke it via the Skill tool — context-builder is user-invocable-only and the call errors; Read-and-follow is the delegation mechanism.
 
 Face overrides while running the engine:
-- Voice = Sharp Strategist (above). Depth tiers map QUICK→SIMPLE, STANDARD→MODERATE, DEEP→COMPLEX.
+- Voice = Sharp Strategist (above). Depth tiers = brain's TRIVIAL/MODERATE/COMPLEX, question counts per table above.
 - `references/question-bank.md` is this face's domain question material — feed it into the engine's layer/category selection.
 - **Skip the brain's Phase 5-6 entirely** (PRD.md, plan-mode handoff). This face's synthesis below replaces them.
-- Termination gates before offering synthesis: you know WHY (real motivation), WHO (audience), WHAT (deliverable format/scope/quality bar). Brain's coverage guard still wins over early-exit requests.
+- Termination gates before offering synthesis — all 5 required, each backed by a user answer (not inference): WHY (real motivation), WHO (audience), WHAT (deliverable format/scope/quality bar), DONE (measurable success criteria — how user judges result), LIMITS (constraints: time, budget, tools, must-nots). Missing gate = keep asking. Brain's coverage guard still wins over early-exit requests.
 - **Question delivery = `AskUserQuestion`, not plain text.** The brain's Rule 2 says "ask exactly ONE question per message, wait for the answer" — keep that sequencing, but deliver each question as one `AskUserQuestion` call instead of a prose message with a `RECOMMENDED:` line:
+  - `AskUserQuestion` is a deferred tool: run `ToolSearch select:AskUserQuestion` once before the first question. Tool still missing, or refused (not just interrupted by Pedro) → ask the same question as plain text, one per message, recommended option marked.
   - One question per call — never put multiple brain-questions in one call's `questions` array; that would violate Rule 2's no-batching intent.
   - Build 2-4 options the same way the persona already would ("offer 2-3 concrete options with trade-offs", question-bank.md's Elicit-Provide-Elicit escalation). The single best-inference answer (what used to be the `RECOMMENDED:` line) becomes the first option, its label suffixed `(Recommended)`.
   - `header` = a short 1-2 word tag naming the question strategy layer (e.g. "Goal", "Audience", "Format", "Constraints").
   - The tool always keeps a free-text "Other" choice — this is where an answer that doesn't fit any preset, or a request to expand/discuss before answering, goes. Treat it exactly as prose answers were treated: feed it back into Rule 4's point-of-arising reconciliation and the Socratic follow-up probes.
   - Rule 6 Coverage Status reports, Rule 9 escape-hatch summaries, and any acknowledge/connect commentary around a question stay plain text — only the question itself goes through the tool.
 
-### 3. Synthesis — mega-prompt
+### 3. Logic audit — before synthesis
 
-Assemble answers into a mega-prompt per `references/synthesis-patterns.md`: select the domain template (Base XML if none fits), fill every slot from interview answers, classify unanswered slots with the three-tier assumption taxonomy (`<convention>` / `<inferred>` / `<guessed>` — guessed counts against the depth budget; zero-signal slots become `[NEEDS INPUT]`), run its pre-synthesis checklist, then present the assembled mega-prompt as plain text followed by an `AskUserQuestion` gate — question: "Does this capture your intent?", options: `Approve — generate it (Recommended)` / `Adjust something` / `Start over`.
+Run on collected answers before assembling anything. Each failure = one more `AskUserQuestion` (one at a time), never a silent fix:
+- **Trace up:** every requirement/constraint links to a stated goal. Orphan → ask why it exists or drop it with user OK.
+- **Trace down:** every goal has a DONE criterion. Goal with no measure → ask how user will judge it.
+- **Contradictions:** pairwise check answers (e.g. "fast" vs "exhaustive", budget vs scope). Clash → ask which wins.
+- **Pre-mortem:** "Deliverable failed — what most likely caused it?" Each cause not covered by an answer → ask.
+- **Undefined terms:** any vague word user used ("simple", "professional", "soon") without concrete meaning → ask.
+- **Depth gate:** part 4 outside proof named, or `UNVERIFIED: <a|b|c|d> <why>` (depth-pass.md end gate). Missing → label once, continue; no loop.
+
+Audit passes only when all six come back clean.
+
+**Then the shared gap review, scaled by tier (face override of context-builder Rule 7 "all tiers"):** TRIVIAL → skip, print `GAP-REVIEW skipped: TRIVIAL`. MODERATE → 1 round max. COMPLEX → full (loop max 3). When run: Read `/home/pedro/.claude/skills/context-builder/references/gap-review.md`, run it (digest → 4 fresh reviewers → merge → ask → closing check). No synthesis until `GAP-REVIEW round N: done` or skip line printed. Answered gaps fold into mega-prompt.
+
+### 4. Synthesis — mega-prompt
+
+Assemble answers into a mega-prompt per `references/synthesis-patterns.md`: select the domain template (Base XML if none fits), fill every slot from interview answers, classify unanswered slots with the three-tier assumption taxonomy (`<convention>` / `<inferred>` / `<guessed>` — every `<guessed>` must be confirmed via `AskUserQuestion` (becomes an answer) or converted to `[NEEDS INPUT]` before the gate; zero guessed may reach approval; zero-signal slots become `[NEEDS INPUT]`), run its pre-synthesis checklist, then present the assembled mega-prompt as plain text followed by an `AskUserQuestion` gate — question: "Does this capture your intent?", options: `Approve — generate it (Recommended)` / `Adjust something` / `Start over`.
 
 NEVER generate the deliverable without explicit approval via that gate. `Adjust something` (or a free-text "Other" describing the change) → adjust and re-present the gate. `Start over` → back to the interview.
 
-### 4. Deliverable
+### 5. Deliverable
 
-Generate from the approved mega-prompt; present cleanly without re-showing the prompt. Offer iteration (adjust the mega-prompt internally and regenerate — don't re-interview). On "save the prompt", output exactly:
+Generate from the approved mega-prompt; present cleanly without re-showing the prompt. Mega-prompt = only source of truth. New open decision surfaces mid-generation (not covered by an answer or `<convention>`) → stop, ask via `AskUserQuestion`, fold answer into mega-prompt, then continue. Never invent to fill it. Offer iteration (adjust the mega-prompt internally and regenerate — don't re-interview). On "save the prompt", output exactly:
 
 ```
 ## Mega-Prompt: [brief title]
@@ -72,4 +93,5 @@ Generate from the approved mega-prompt; present cleanly without re-showing the p
 - **Language**: interview in the user's language; XML tags always English; slot values in the user's language; clarify deliverable language in the Format questions if not obvious.
 - This face supersedes the "1-2 clarifying questions" rule while active — the interview IS the clarification.
 - If another skill applies to the deliverable, interview first, then hand off to that skill with the mega-prompt as context.
+- Plan mode active: the plan file is the deliverable and `ExitPlanMode` is the approval gate (no mega-prompt step); an intent gate via `AskUserQuestion` before writing the plan is fine.
 - Mid-interview state, contradictions, and resume behavior: the brain's rules govern (Rule 2 async checkpointing, Rule 4 point-of-arising reconciliation).

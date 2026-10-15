@@ -24,7 +24,7 @@ The skill self-classifies every invocation into one of three tiers. Classificati
 - Add a missing import
 - Bump a version pin
 
-**Machinery:** skip Phase 0, skip Rumsfeld, skip Phase 5. Produce a 1-line summary using the **terse palette only** (`specific`, `focused`, `precise`, `concise`, `clear`). Hand directly to plan-mode suggestion — no PRD, no PM.
+**Machinery:** 3-5 questions. Skip Phase 0, skip Rumsfeld, skip Phase 5. Produce a 1-line summary using the **terse palette only** (`specific`, `focused`, `precise`, `concise`, `clear`). Hand directly to plan-mode suggestion — no PRD, no PM.
 
 ---
 
@@ -47,7 +47,7 @@ The skill self-classifies every invocation into one of three tiers. Classificati
 - Add a table column with backfill
 - Write a new skill with a well-known shape
 
-**Machinery:** Phase 0 light (decompose only, no research unless triggered). Rumsfeld initial + final sweep only. Phase 5 = PRD only (skip PM). Balanced palette: `specific`, `focused`, `actionable`, `nuanced`, `structured`.
+**Machinery:** 5-15 questions. Phase 0 light (decompose only, no research unless triggered). Rumsfeld initial + final sweep only. Phase 5 = PRD only (skip PM). Balanced palette: `specific`, `focused`, `actionable`, `nuanced`, `structured`.
 
 ---
 
@@ -71,7 +71,7 @@ The skill self-classifies every invocation into one of three tiers. Classificati
 - Change an authentication scheme
 - Regulatory pipeline (DGII, medical, finance)
 
-**Machinery:** full Phase 0 + research + theory loop. Full Rumsfeld cadence with all triggers. Full Phase 5 (PRD + PM). Full palette: `thorough`, `comprehensive`, `rigorous`, `analytical`, `critical`, `systematic`, `step-by-step`.
+**Machinery:** 15+ questions, no cap. Full Phase 0 + research + theory loop. Full Rumsfeld cadence with all triggers. Full Phase 5 (PRD + PM). Full palette: `thorough`, `comprehensive`, `rigorous`, `analytical`, `critical`, `systematic`, `step-by-step`.
 
 ---
 

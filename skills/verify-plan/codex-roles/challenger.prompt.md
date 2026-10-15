@@ -42,6 +42,14 @@ Budget yourself ~13 reads + ~7 greps total across Phases 2 and 2b. Be surgical. 
 `assumption_audit[]`. Status per item: VALIDATED (cite source) / CHALLENGED (→ escalate to a
 challenge in `findings`) / STALE / UNVERIFIED (→ add to `unknowns_manifest`).
 
+**Depth lens (same as v2 R-D; rule `~/.claude/skills/context-builder/references/depth-pass.md`).**
+Plan proof line `proof: <check>` or `UNVERIFIED: a|b|c|d <why>` (a taste/brand, b nothing exists yet,
+c money/access only Pedro holds, d source unreachable unattended). Off-list or wrong-letter reason, a
+real outside check that existed (test, fixture, spec, read-only data), or self-review as proof →
+SIGNIFICANT finding. Plan built on digested input (summary, agent report, earlier doc) while the raw
+source was reachable read-only → SIGNIFICANT, cite plan line + raw path. Senior-pro extras / uncited
+methods → MINOR only. Missing proof line is lint's job: do not re-flag.
+
 **Phase 2b — Tests Contract (TC-1).** Populate `tests_contract`. A plan is a code-change plan if
 it references source files (.js/.ts/.tsx/.py/.go/.rs/.rb/.java/.cs/.cpp/.c/.sh/.sql) OR contains
 verbs implement/refactor/fix bug/add feature/build/write code/rewrite/port OR has steps that

@@ -1,6 +1,6 @@
 ---
 name: context-builder
-description: "Use when: entering plan mode or a GSD discuss phase; building a spec, PRD, or requirements doc; designing a new feature, domain model, or glossary; doing architecture or system-design work; gathering context or requirements before planning; running a blindspot sweep or stress-test before execution; recording an ADR or decision log; asking 'help me understand what we need to build' or 'ask me everything before generating'; any context-gathering task. Triggers: planning, design, new feature, spec, PRD, requirements, context-gathering, building, architecture, /context-builder, interview, gather context, discuss phase, plan mode, before planning, understand requirements, fill gaps, blindspot sweep, domain model, glossary, stress test, ADR. Does NOT apply to: bug fixes with clear repro, code review, debugging, operational tasks, requests with explicit scope already provided, or stress-testing an existing plan or design (use grill-me)."
+description: "Use when: entering plan mode or a GSD discuss phase; building a spec, PRD, or requirements doc; designing a new feature, domain model, or glossary; doing architecture or system-design work; gathering context or requirements before planning; running a blindspot sweep or stress-test before execution; recording an ADR or decision log; asking 'help me understand what we need to build' or 'ask me everything before generating'; any context-gathering task. Does NOT apply to: bug fixes with clear repro, code review, debugging, operational tasks, requests with explicit scope already provided, or stress-testing an existing plan or design (use verify-plan)."
 ---
 
 # Context Builder (v2)
@@ -38,7 +38,7 @@ When this skill activates:
 
 ### Step 0.1 Self-classify complexity tier
 
-Read `references/complexity-tiers.md`. Apply the criteria and auto-elevation triggers. Pick one tier. Use **neutral words only** in this step (`specific`, `precise`, `structured`) — never Depth words, to avoid priming bias.
+Read `references/complexity-tiers.md`. Apply the criteria and auto-elevation triggers. Pick one tier.
 
 Announce:
 
@@ -49,13 +49,9 @@ Announce:
 **Override:** `--full` forces COMPLEX; `--quick` suppresses Phase 5.
 ```
 
-### Step 0.2 Sequential-thinking decomposition (COMPLEX only)
+### Step 0.2 Decomposition (MODERATE/COMPLEX)
 
-If COMPLEX, invoke `mcp__sequential-thinking__sequentialthinking` to break the request into step-by-step sub-problems. Verify the tool's parameter schema via ToolSearch before invoking — never guess MCP params. If ToolSearch fails, the param-fetch fails, or the tool is unavailable, fall back to a structured prose decomposition, log the degrade in `research_log.md` (`degrade: true`, reason), and continue — never stall on a missing MCP.
-
-If MODERATE, use a structured prose decomposition (no MCP call required).
-
-If TRIVIAL, skip this step.
+Break the request into sub-problems before researching. TRIVIAL: skip.
 
 ### Step 0.3 Research loop (Currency Mandate)
 
@@ -64,9 +60,8 @@ This step serves the **Research-Before-Asking (Currency Mandate)** in the Canoni
 - `ctx7` CLI for library/framework docs (current versions + APIs)
 - WebSearch for current best-practices and recent shifts
 - WebFetch for specific URLs
-- Sequential-thinking MCP for decomposition (already done in 0.2)
 
-Budget: Phase 0 ≤ 5 WebSearch + 2 ctx7 + 1 seqthink pass. Log every action in `01-Projects/<project>/research_log.md`. Graceful degrade on tool failure — never fail-open, never block the interview.
+Budget: Phase 0 ≤ 5 WebSearch + 2 ctx7. Log every action in `01-Projects/<project>/research_log.md`. Graceful degrade on tool failure — never fail-open, never block the interview.
 
 **MODERATE tier MUST run this step when a library, framework, or fast-moving domain is in scope** — current docs are not optional there. TRIVIAL tier may skip only when nothing is researchable (pure-internal/stable topic); when a researchable library/framework is in play even on TRIVIAL, do the minimal currency check.
 
@@ -81,9 +76,13 @@ Read `references/rumsfeld-protocol.md`. Run the 4-quadrant sweep:
 
 Output the quadrant table. Flag any `[RUMSFELD-GAP: Q{N}]`. TRIVIAL tier skips this step.
 
-### Step 0.5 Announce
+### Step 0.5 Depth pass (all tiers)
 
-Post one announcement block to the user: tier, rationale, machinery, research-log path, any early Rumsfeld flags. Then proceed to Rule 1.
+Read `references/depth-pass.md` and run it: senior role, rawest source (read it if reachable), cited methods (role library first), outside proof. Scaled: TRIVIAL = 1 line per part. Its output shapes the questions and RECOMMENDED answers below.
+
+### Step 0.6 Announce
+
+Post one announcement block to the user: tier, rationale, machinery, research-log path, any early Rumsfeld flags, the depth-pass block (≤4 lines). Then proceed to Rule 1.
 
 ---
 
@@ -129,7 +128,7 @@ Do not accept "it's fine", "the usual way", "nothing special". Read `references/
 Systematically address all 10 MECE categories in `references/mece-categories.md`: domain, technical, cross-phase, workflow, edge-cases, assumptions, stakeholder-power, temporal, second-order, compliance. Auto-trigger the compliance category — **case-insensitively** — when the domain matches `health|finance|tax|user-data|child|children|minors|medical|HIPAA|GDPR|privacy|DGII|SOC2|PCI|biometric|PII`. Match regardless of case (`hipaa`, `Hipaa`, `HIPAA` all fire).
 
 ### Rule 6: Coverage Status (cadence trigger)
-Emit a Coverage Status report when a MECE category newly drops to UNEXPLORED (a fresh gap just opened), **or** every 5 questions — whichever comes first. The event-driven half catches gaps the moment they appear; the 5-question half guarantees a floor cadence even when no new gap opens. Pause and emit the structured report:
+Emit a Coverage Status report when a MECE category newly drops to UNEXPLORED, and before declaring context complete (Rule 7). Pause and emit the structured report:
 
 ```
 **Coverage Status:**
@@ -142,6 +141,10 @@ Emit a Coverage Status report when a MECE category newly drops to UNEXPLORED (a 
 This is the MECE verification step. If any category is Unexplored without a `N/A` reason, keep interviewing.
 
 ### Rule 7: Explicit Handoff — No Auto-Transition
+**Gap review gate (mandatory, all tiers):** before stating readiness, read `references/gap-review.md` and run it. No handoff until `GAP-REVIEW round N: done` is printed. Shared with reverse-prompt, gsd-discuss-phase, `/gap-review`.
+
+**Depth end gate:** before handoff, part 4 of `references/depth-pass.md` is named (a check outside Claude and the user) or labeled `UNVERIFIED: <a|b|c|d> <why>`. Missing → label once, then hand off.
+
 NEVER move to planning on your own. When context is complete, state:
 
 "I'm satisfied with the context gathered. Summary: <brief>. Ready to proceed when you confirm."
@@ -273,7 +276,7 @@ Plan written. To auto-verify with `/plan-perfector`, type:
 @PLAN-PERFECTOR:<absolute path to plan file>
 ```
 
-This chains into the existing plan-management flow (`~/.claude/rules/constitution.md § Plan Mode Contract`; the plan-file contract itself lives in `~/.claude/rules-ref/plan-contract.md`).
+This chains into the existing plan-management flow (the plan-file contract lives in `~/.claude/rules-ref/plan-contract.md`).
 
 ---
 
@@ -307,19 +310,19 @@ Guardrails: never tag a guess Confident; every assumption cites a real file; one
 
 ## Canonical Elicitation Contract
 
-Three skills share one elicitation brain. **context-builder is the canonical owner** of that shared behavioral spec. `grill-me` is its featherweight adversarial projection; `gsd-discuss-phase` is its GSD-pipeline-bound projection. All three honor the same core behaviors:
+Two skills share one elicitation brain. **context-builder is the canonical owner**; `gsd-discuss-phase` is its GSD-pipeline-bound projection. Both honor the same core behaviors:
 
 - **One question at a time** — never batch.
 - **Recommended answers** — offer a labeled best-inference the user can accept, override, or refine.
 - **Explore-instead-of-ask** — answer from the codebase before asking the user.
 - **Vague-escalation** — name the ambiguity → A vs B → drill to the consequence.
 - **Blindspot sweep** — "what gaps remain? what am I assuming?" before declaring done.
+- **Depth pass** — deeper, not bigger: senior role, rawest source, cited methods, outside proof (`references/depth-pass.md`). Faces cite it, never copy it.
 - **Stop when downstream can act** — converge, then stop; no endless questioning, no auto-transition.
 
 **Research-Before-Asking (Currency Mandate).** Your training is a snapshot; the domain has moved. Before questioning, refresh current state — Context7 for any library/framework/SDK in scope (current docs + versions; mandatory), web (WebSearch) for current best-practices and recent shifts. Questions AND RECOMMENDED answers must reflect the current state-of-the-art, grounded in researched evidence — never present training-era knowledge as current. Proportionate: mandatory whenever a library/framework/fast-moving domain is in play; skip only when nothing is researchable (pure-internal/stable topic). Log what was checked.
 
 **Separation rules (what stays distinct per face):**
-- **grill-me** — adversarial on an *existing* plan; featherweight (instant to invoke, no artifacts, no reference loads).
 - **gsd-discuss-phase** — bound to the GSD pipeline; writes `CONTEXT.md` for plan-phase; framework-coupled.
 - **context-builder** — greenfield context-building; produces artifacts (PRD/PM); epistemic hard-gates (Rumsfeld) + tier discipline.
 
@@ -331,7 +334,7 @@ Three skills share one elicitation brain. **context-builder is the canonical own
 
 ## Telemetry
 
-Invocation *occurrence* is now captured automatically in the central invocation
+Invocation occurrence is captured automatically in the central invocation
 log (`~/.claude/logs/invocations.jsonl`, `channel:"skill"`) by the
 `invocation-logger.js` PostToolUse hook — no per-skill logging is needed just to
 know the skill ran. This local log is kept only for the RICHER tuning fields the
@@ -353,7 +356,7 @@ Any edit to `SKILL.md` or any file in `references/` MUST append an entry to `ref
 
 ---
 
-## Anti-Patterns (preserved from v1 + expanded)
+## Anti-Patterns
 
 The exact behaviors this skill exists to prevent:
 
@@ -365,7 +368,6 @@ The exact behaviors this skill exists to prevent:
 - **Premature trivial calibration:** classifying as TRIVIAL to avoid thorough questioning.
 - **Silent research override:** research contradicts user, skill overwrites without asking. WRONG — surface as a Socratic question at point-of-arising, not deferred to a later sweep.
 - **Fail-open on hard gate:** Q2/Q4 unresolved but skill proceeds anyway. WRONG — deadlock-override path only.
-- **Depth words in TRIVIAL prose:** priming the skill to over-question trivial tasks. WRONG — tier-segment prose.
 - **Guessing MCP params:** WRONG — verify via ToolSearch first.
 - **Silently overwriting PRD.md:** WRONG — ask user (overwrite / append-revision / .v2-suffix).
 
@@ -375,8 +377,8 @@ See `references/KNOWN-LIMITS.md` for B1–B7 documented edge cases.
 
 ## Tier Quick Reference
 
-TRIVIAL path — focused, concise, specific language only. No Depth words. Skip Phase 0 and Phase 5. One-line summary + plan-mode suggestion. Example good 1-line summary: "Change the session-timeout constant in `auth/config.ts` from 30m to 60m — single value, reversible, no downstream readers. Ready for plan mode."
+TRIVIAL path — skip Phase 0 and Phase 5. Three to five questions, then one-line summary + plan-mode suggestion. Example good 1-line summary: "Change the session-timeout constant in `auth/config.ts` from 30m to 60m — single value, reversible, no downstream readers. Ready for plan mode."
 
-MODERATE path — balanced palette. Light Phase 0, initial + final Rumsfeld sweep, PRD only. Five to eight questions.
+MODERATE path — balanced palette. Light Phase 0, initial + final Rumsfeld sweep, PRD only. Five to fifteen questions.
 
-COMPLEX path — full palette: thorough, comprehensive, rigorous, analytical, critical, systematic, step-by-step. Full Phase 0, full Rumsfeld cadence, full Phase 5 (PRD + PM). Exhaustive questioning, no upper limit on questions.
+COMPLEX path — full Phase 0, full Rumsfeld cadence, full Phase 5 (PRD + PM); fifteen or more questions, no cap.

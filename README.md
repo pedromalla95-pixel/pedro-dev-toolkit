@@ -7,6 +7,8 @@ Personal Claude Code plugin containing four existing workflow skills:
 - `reverse-prompt`
 - `verify-plan`
 
+> Mirror of `~/.claude/skills/{context-builder,reverse-prompt,verify-plan}`. Refresh with `./sync-from-live.sh` (excludes `research/`, `AUDIT-*`). Skills still call live `~/.claude` scripts (`scripts/roles.py`, `workflows/plan-review.js`, `get-shit-done/`).
+
 The plugin is also a local marketplace. Add this directory as a marketplace,
 then install `pedro-dev-toolkit` from it:
 

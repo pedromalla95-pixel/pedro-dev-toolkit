@@ -53,6 +53,12 @@ For each assumption from Phase 1 Ingest, attempt validation:
 | STALE | Last verification >6 months ago or based on training data | Escalate to unknowns manifest |
 | UNVERIFIED | Cannot be checked with available tools/budget | Escalate to unknowns manifest |
 
+**Depth lens (same as v2 R-D; rule `~/.claude/skills/context-builder/references/depth-pass.md`, cite, never copy).**
+- Proof line `proof: <check>` or `UNVERIFIED: a|b|c|d <why>` (a taste/brand, b nothing exists yet, c money/access only Pedro holds, d source unreachable unattended). Missing = lint `NO_PROOF`, don't re-flag.
+- UNVERIFIED reason off-list / wrong letter, or a real outside check existed (test, fixture, spec, read-only data) → challenge, SIGNIFICANT. Self-review as proof → SIGNIFICANT.
+- Plan built on digested input (summary, agent report, earlier doc) while raw source reachable read-only → challenge, SIGNIFICANT. Cite plan line + raw path.
+- Senior-pro extras / uncited methods (parts 1, 3) → MINOR note only. Added deliverables: list, Pedro picks.
+
 **Output format — Assumption Audit table (use protocol.md §10 schema):**
 
 ```
